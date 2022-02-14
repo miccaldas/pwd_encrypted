@@ -1,0 +1,16 @@
+# Compiled python modules.
+*.pyc
+__pycache__
+
+# Database files.*.db
+*.sql
+
+# Log files and folders
+*.log
+logs/
+
+# Setuptools distribution folder.
+/dist/
+
+# Python egg metadata, regenerated from source files by setuptools.
+/*.egg-info
