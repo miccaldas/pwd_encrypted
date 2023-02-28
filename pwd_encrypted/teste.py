@@ -41,7 +41,7 @@ def teste():
     print(pct)
     sam = wds + pct
     print(sam)
-    samp = random.sample(sam, 6)
+    samp = random.sample(sam, 7)
     sampe = " ".join(samp)
     sample = sampe.replace(" ", "")
     print(sample)
