@@ -1,0 +1,75 @@
+# WINDOW START
+    with open("<SOME_NAME>.bash", "w") as f:
+         f.write("#!/usr/bin/env bash\n\n")
+         f.write("tput clear\n\n")
+         f.write(f"tput cup {init_pos}\n")
+         f.write(f"tput setaf {title_color}\n")
+         f.write("tput bold\n")
+         f.write('echo "<SOME_TITLE>"\n')
+         f.write("tput sgr0\n\n")
+
+         f.write(f"tput cup {separator_height} {init_width}\n")
+         f.write(f"echo '{Add.separator}'\n")
+
+# PRINTING TO THE WINDOW
+         f.write(f"tput cup {separator_height + 2} {init_width}\n")
+         f.write(f'echo "{<SOME_TEXT_STRING>_str}"\n')
+
+# PRINTING IN A LOOP
+# VALUES IN THE 'ECHO' STATEMENTS ARE THERE ONLY AS AN EXAMPLE
+# USE YOUR OWN.
+            # The way the page was consructed was that each entry set would know the
+            # last height position used, so as to be able to start printing after that
+            # value. The first entry has no past, so it had to be dealt separately.
+            if i == 0:
+                new_length = len(<NAME_OF_LIST_THAT _HAS_ENTRIES>[i])
+                rng = range(new_length)
+                # List with all the numbers of rng range.
+                rng_lst = [int(r) for r in rng]
+                f.write(
+                    f"tput cup {init_height + (rng_lst[0] + 2)} {init_width}\n")
+                f.write(f"echo 'ID. {results[i][0]}'\n")
+                f.write(f"tput cup {init_height + (rng_lst[1] + 2)} {init_width}\n")
+                f.write(f'echo "Title. {results[i][1]}"\n')
+                # USE AS MANY TPUT/ECHO BLOCKS AS THE NUMBER OF COLUMNS YOU WANT TO SHOW
+            else:
+                # 'upper' represents the last height number used. So we know that we have to
+                # use heights 'higher' than that value.
+                up = rng_lst[-1]
+                # We are using range() and len() functions to measure the length of results.
+                # The problem with this is that range() counts from 0 to a limit, meaning
+                # that if we create a list from a range, up to 4 for example, it'll have 5
+                # entries, the numbers from 1 to 4 and the 0. But len() starts from 1, meaning
+                # these numbers will create lists of uneven number of items. As is the number
+                # entries in the result list that defines the number of loops, it'll count
+                # also from 0 to limit, as this is how lists are numbered. As we defined our
+                # 'rng' variable from the len() of the 'results' list, it's a 1 loop shorter
+                # from the number of entries in 'results'. That's why we have to add 1 to the
+                # value of 'rng_lst'.
+                upper = int(up + 1)
+                init_rng = range(upper + 2, (upper + 2 + len(results[i])))
+                rng_lst = [i for i in init_rng]
+                f.write('echo " "\n')
+                f.write(
+                    f"tput cup {init_height + rng_lst[0] + 2} {init_width}\n"
+                )
+                f.write(f"echo 'ID. {results[i][0]}'\n")
+                f.write(
+                    f"tput cup {init_height + rng_lst[1] + 2} {init_width}\n" 
+                # USE AS MANY TPUT/ECHO BLOCKS AS THE NUMBER OF COLUMNS YOU WANT TO SHOW
+
+
+# COLLECTING VAR VALUE FROM BASH SCRIPT
+         f.write(f"tput cup {init_height + 6} {init_width}\n")
+         f.write(f'read -p "{<SOME_VAR>_str}: " choice\n')
+         f.write('echo "${choice}" > <SOME_VAR>_choice.txt\n')
+
+# WINDOW END
+         f.write("tput clear\n")
+         f.write("tput sgr0\n")
+         f.write("tput rc")
+
+    subprocess.run("sudo chmod +x <SOME_NAME>.bash", cwd=os.getcwd(), shell=True)
+    subprocess.run("./<SOME_NAME>.bash", cwd=os.getcwd(), shell=True)
+
+

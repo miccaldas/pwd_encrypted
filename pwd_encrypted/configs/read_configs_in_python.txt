@@ -1,0 +1,16 @@
+To read the configuration data housed in this folder,
+follow this example based in 'tput_config'.
+Remember that all functions in the 'config.py' file
+return dictionaries, so all the python commands to
+deal with dictionaries apply here.
+-----------------------------------------------------
+from configs.config import tput_config
+
+def some_function():
+    cnf = tput_config()
+    # To acces the value of a dictionary item called
+    # 'width', do:
+    print(cnf["width"])
+    # If you want, you may turn it into a variable:
+    with = cnf["width"]
+----------------------------------------------------
