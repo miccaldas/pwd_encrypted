@@ -7,7 +7,6 @@ import pickle
 import random
 import string
 import subprocess
-import sys
 
 import snoop
 from colr import color
