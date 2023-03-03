@@ -1,0 +1,6 @@
+#!/usr/bin/expect -f
+#
+spawn pass python_projects/pwd_encrypted/radiopopular.pt
+expect "Enter your passphrase .*."
+send "generate passwords with no symbols using"
+expect eof

@@ -6,16 +6,22 @@ encryprion and update the database.
 As this is a one off event, it's called by no one.
 """
 
+import contextlib
+import io
 import os
 import pickle
 import sqlite3
 import subprocess
+import sys
+from contextlib import redirect_stdout
+from datetime import datetime
 
 import snoop
 from db_decorator.db_information import db_information
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
 from pythemis.skeygen import GenerateSymmetricKey
+from rich import print as rprint
 from snoop import pp
 
 from configs.config import tput_config
@@ -42,10 +48,6 @@ def encrypt():
     with open("/home/mic/themis_key/key.bin", "rb") as g:
         sym_key = pickle.load(g)
         cell = SCellSeal(key=sym_key)
-        # We make available the 'cell' object, as it will
-        # be necessary for any decryption duty.
-        with open("cell.bin", "wb") as y:
-            pickle.dump(cell, y)
 
     update_info = []
     # Sqlite3 prints callback on errors.
@@ -96,30 +98,93 @@ def encrypt():
         #    encryption process.
         bval = ints.to_bytes(2, "little")
         encrypted = cell.encrypt(btri, bval)
-        decrypt_info = (encrypted, bval)
+        decrypt_info = (encrypted, bval, ints)
         # This will be used by, 'update', 'search'...
-        with open("decript_info.bin", "ab") as v:
+        with open("decrypt_info.bin", "ab") as v:
             pickle.dump(decrypt_info, v)
         # We need to create a new list with the encrypted
         # passwords and an integer version of 'pwdid', as
-        # the one in 'decrypt_info.bin' is bytes, to be
-        # used in Sqlite's databaase connection.
-        nrow = (encrypted, ints)
-        update_info.append(nrow)
-        with open("update_info.bin", "wb") as o:
-            pickle.dump(update_info, o)
+        # the one in 'decrypt_info.bin' is bytes, to
+        # use in Sqlite's databaase connection.
+        # nrow = (encrypted, ints)
+        # update_info.append(nrow)
+        # with open("update_info.bin", "wb") as o:
+        #     pickle.dump(update_info, o)
+
+
+@snoop
+def decrypt_storage():
+    """
+    As the information contained in 'decrypt_info.bin' is
+    important, some added feedback and monitorization are
+    in order. Here we'll transfer the file to its storage
+    folder '~/themis_key/pwd/', but we need to make sure
+    that we're not destroying any previous information
+    stored there. Also we want to make sure that every file
+    that is sent there has some added meta-data, that'll
+    tell us when the file was put there and why.
+    """
+    pwddir = "/home/mic/themis_key/pwd/"
+    path = f"{pwddir}decrypt_info.bin"
+    lst_path = os.listdir(pwddir)
+    cmd0 = f"getfattr {path}"
+
+    if "decrypt_info.bin" in lst_path:
+        with redirect_stdout(io.StringIO()) as g:
+            xattrs_proc = subprocess.run(cmd0, shell=True, stdout=subprocess.PIPE)
+            print(xattrs_proc.stdout)
+            xattr_lst = g.getvalue()
+            if len(xattr_lst) > 4:
+                if "user.creation_date" in xattr_lst:
+                    cmd1 = f"getfattr --only-values -n user.creation_date {path}"
+                    with redirect_stdout(io.StringIO()) as h:
+                        pcreation_date = subprocess.run(
+                            cmd1, shell=True, stdout=subprocess.PIPE
+                        )
+                        print(pcreation_date.stdout)
+                        pcdt = h.getvalue()
+                        pdct_clean = pcdt.strip()
+                        pdct_ticks = pdct_clean.replace("'", "")
+                        pdct_bytes = pdct_ticks[1:]
+                        pre_creation_date = float(pdct_bytes)
+        sysattrs = os.stat(path)
+        try:
+            modification_date = sysattrs.st_mtime
+        except AttributeError:
+            print("File has no last modification attribute.")
+        print(pre_creation_date + 1)
+    pp(os.stat(path))
+    # subprocess.run("cp decrypt_info.bin /home/mic/themis_key/pwd", shell=True)
+
+    now = datetime.timestamp(datetime.now())
+    inow = int(now)
+    datetime_value = datetime.fromtimestamp(inow)
+    # creation_value = str(datetime_value).encode("utf-8")
+    # flt_ret = datetime.fromtimestamp(now)
+    # flt_strf = flt_ret.strftime("%d-%m-%Y_%H:%M")
+    cmd2 = f"setfattr -n user.creation_date -v {inow} {path}"
+    subprocess.run(cmd2, shell=True)
+    cmd3 = f"getfattr --only-values -n user.creation_date {path}"
+    with redirect_stdout(io.StringIO()) as f:
+        creation_proc = subprocess.run(cmd3, shell=True, stdout=subprocess.PIPE)
+        print(creation_proc.stdout)
+    creation_date = f.getvalue()
+    # tt = datetime.fromtimestamp(1677766596)
+    # tt_strf = tt.strftime("%d-%m-%Y_%H:%M")
+
+    # subprocess.run("/usr/bin/trash-put decrypt_info.bin", cwd=os.getcwd(), shell=True)
 
 
 @db_information
 @snoop
 def update_pwd():
     """
-    Reads the list of tuples, '(encrypted_pwd, pwdid)'
+    Reads the list of tuples, '(encrypted_pwd, bval, pwdid)'
     and sends it to the datbase to update.
     """
 
     lst_in_lst = []
-    with open("update_info.bin", "rb") as r:
+    with open("decrypt_info.bin", "rb") as r:
         while True:
             try:
                 lst_in_lst.append(pickle.load(r))
@@ -131,10 +196,10 @@ def update_pwd():
     lst = [i for sublst in lst_in_lst for i in sublst]
     sqlite3.enable_callback_tracebacks(True)
     conn = sqlite3.connect("pwd.db")
-    cur = conn.cursor()
     for tup in lst:
+        answers = [tup[0], tup[2]]
         query = "UPDATE pwd SET pwd = ?1 WHERE pwdid = ?2"
-        cur = conn.execute(query, tup)
+        conn.execute(query, answers)
         conn.commit()
     conn.close()
 
@@ -146,8 +211,9 @@ def call_srch():
     """
     Calls the previous functions.
     """
-    encrypt()
-    update_pwd()
+    # encrypt()
+    decrypt_storage()
+    # update_pwd()
 
 
 if __name__ == "__main__":
