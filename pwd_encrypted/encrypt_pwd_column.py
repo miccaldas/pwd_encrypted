@@ -11,17 +11,13 @@ import pickle
 import sqlite3
 import subprocess
 import sys
-from datetime import datetime
 
 import snoop
 from db_decorator.db_information import db_information
+from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
-from pythemis.skeygen import GenerateSymmetricKey
-from rich import print as rprint
 from snoop import pp
-
-from configs.config import tput_config
 
 
 def type_watch(source, value):
@@ -29,6 +25,13 @@ def type_watch(source, value):
 
 
 snoop.install(watch_extras=[type_watch])
+
+# Loads .env's variables to this module.
+load_dotenv()
+# Variables defined in the .env file at the top of the project tree.
+res_pth = os.getenv("PWD_SEC_LOC")
+enc_key = os.getenv("PWD_KEY_LOC")
+decinfo = os.environ.get("PWD_DECINFO_LOC")
 
 
 @snoop
@@ -42,11 +45,14 @@ def encrypt():
     """
 
     # Location of the Themis key.
-    with open("/home/mic/themis_key/key.bin", "rb") as g:
+    with open(
+        f"{enc_key}",
+        "rb",
+    ) as g:
         sym_key = pickle.load(g)
         cell = SCellSeal(key=sym_key)
 
-    update_info = []
+    decrypt_info = []
     # Sqlite3 prints callback on errors.
     sqlite3.enable_callback_tracebacks(True)
     conn = sqlite3.connect("pwd.db")
@@ -76,7 +82,7 @@ def encrypt():
         # an error message was being produced. This 'if'
         # clause avoids setting the message on.
         if type(stri) != bytes:
-            btri = bytes(stri, "utf-8")
+            btri = bytes(stri, "latin-1")
         else:
             btri = stri
         # Themis' decryption functions, consume
@@ -93,62 +99,48 @@ def encrypt():
         # 2. Encrypted. Or any other name that you want
         #    to give to the variable that identifies Themis'
         #    encryption process.
-        bval = ints.to_bytes(2, "little")
+        bval = ints.to_bytes(2, sys.byteorder)
         encrypted = cell.encrypt(btri, bval)
-        decrypt_info = (encrypted, bval, ints)
-        # This will be used by, 'update', 'search'...
-        with open("decrypt_info.bin", "ab") as v:
-            pickle.dump(decrypt_info, v)
-        # We need to create a new list with the encrypted
-        # passwords and an integer version of 'pwdid', as
-        # the one in 'decrypt_info.bin' is bytes, to
-        # use in Sqlite's databaase connection.
-        # nrow = (encrypted, ints)
-        # update_info.append(nrow)
-        # with open("update_info.bin", "wb") as o:
-        #     pickle.dump(update_info, o)
+        decrypt_info.append((encrypted, bval))
 
-
-@snoop
-def decrypt_storage():
-    """
-    As the information contained in 'decrypt_info.bin' is
-    important, some added feedback and monitorization are
-    in order. Here we'll transfer the file to its storage
-    folder '~/themis_key/pwd/', but we need to make sure
-    that we're not destroying any previous information
-    stored there. Also we want to make sure that every file
-    that is sent there has some added meta-data, that'll
-    tell us when the file was put there and why.
-    """
-    pwddir = "/home/mic/themis_key/pwd/"
-    path = f"{pwddir}decrypt_info.bin"
-    lst_path = os.listdir(pwddir)
+    # This will be used by, 'update', 'search'...
+    with open("decrypt_info.bin", "ab") as v:
+        pickle.dump(decrypt_info, v)
+    # We need to create a new list with the encrypted
+    # passwords and an integer version of 'pwdid', as
+    # the one in 'decrypt_info.bin' is bytes, to
+    # use in Sqlite's databaase connection.
+    # nrow = (encrypted, ints)
+    # update_info.append(nrow)
+    # with open("update_info.bin", "wb") as o:
+    #     pickle.dump(update_info, o)
+    subprocess.run(f"mv decrypt_info.bin {res_pth}", shell=True)
 
 
 @db_information
 @snoop
 def update_pwd():
     """
-    Reads the list of tuples, '(encrypted_pwd, bval, pwdid)'
+    Reads the list of tuples, '(encrypted_pwd, bval)'
     and sends it to the datbase to update.
     """
 
     lst_in_lst = []
-    with open("decrypt_info.bin", "rb") as r:
+    with open(f"{decinfo}", "rb") as r:
         while True:
             try:
                 lst_in_lst.append(pickle.load(r))
             except EOFError:
                 break
 
-    # 'update_info.bin' is a list of tuples inside another
+    # 'decrypt_info.bin' is a list of tuples inside another
     # list. This comprehension flattens it out.
     lst = [i for sublst in lst_in_lst for i in sublst]
     sqlite3.enable_callback_tracebacks(True)
     conn = sqlite3.connect("pwd.db")
     for tup in lst:
-        answers = [tup[0], tup[2]]
+        id_int = int.from_bytes(tup[1], sys.byteorder)
+        answers = [tup[0], id_int]
         query = "UPDATE pwd SET pwd = ?1 WHERE pwdid = ?2"
         conn.execute(query, answers)
         conn.commit()
@@ -162,9 +154,8 @@ def call_srch():
     """
     Calls the previous functions.
     """
-    # encrypt()
-    decrypt_storage()
-    # update_pwd()
+    encrypt()
+    update_pwd()
 
 
 if __name__ == "__main__":

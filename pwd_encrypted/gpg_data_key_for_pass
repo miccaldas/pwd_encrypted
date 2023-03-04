@@ -1,7 +1,0 @@
-Key for Pass password manager
-USER-ID - miguel (Key for Pass password manager) <micaldas@mailfence.com>
-passphrase - generate passwords with no symbols using
-pub   rsa3072 2023-03-02 [SC] [expires: 2043-02-25]
-      285C8C24937E74A35EDF29F6564C2C4583242167
-uid                      miguel (Key for Pass password manager) <micaldas@mailfence.com>
-sub   rsa3072 2023-03-02 [E] [expires: 2043-02-25]
