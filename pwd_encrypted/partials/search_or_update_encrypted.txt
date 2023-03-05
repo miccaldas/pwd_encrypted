@@ -1,30 +1,20 @@
-"""
-Module to house the search function of the app.
-There are three functions in this module:
-    1. Creation of the question window. Where
-       we define content and look of the search
-       query window. It'll return the user's
-       search choice.
-    2. Database call. It'll look in the db for
-       the term chosen in the previous function.
-    3. Creation of answer window. Generates a
-       window with the results of the db query
-       done in the previous function.
-It's called by 'main'.
-"""
-
+# TEMPLATE THAT CAN BE USED FOR SEARCH AND UPDATE MODULES ALIKE.
+# NOTE THAT IF YOU'RE GOING TO ENCRYPT, YOU'LL HAVE TO MIGRATE
+# THE DATABASE CONTENTS TO SQLITE. THE PYTHON MYSQL CONNECTOR
+# MESSES WITH THE ENCRYPTED VALUES.
+# FOR HELP WITH THE CONVERSION, USE 'mysql2sqlite' THAT IS ON
+# /HOME/MIC.
 import os
 import pickle
 import sqlite3
 import subprocess
 import sys
-
-import snoop
-from db_decorator.db_information import db_information
+import pip
+from pip import pp
 from dotenv import load_dotenv
+from db_decorator.db_information import db_information
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
-from snoop import pp
 
 from configs.config import tput_config
 
@@ -39,19 +29,19 @@ load_dotenv()
 
 
 @snoop
-def srch_question():
+def <SEARCH_OR_UPDATE>_question():
     """
     Generates a Tput window with a question.
     """
 
     cnf = tput_config()
 
-    title_str = "WHAT ARE YOU LOOKING FOR?"
+    title_str = "<SOME_TITLE>"
     title_width = int(
         cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{title_str}") / 2)
     )
 
-    with open("srch_q.bash", "w") as f:
+    with open("<SEARCH_OR_UPDATE>_q.bash", "w") as f:
         f.write("#!/usr/bin/env bash\n\n")
         f.write("tput clear\n\n")
         f.write(f"tput cup {cnf['init_height']} ")
@@ -66,13 +56,13 @@ def srch_question():
 
         f.write(f"tput cup {cnf['separator_height'] + 3} {cnf['init_width']}\n")
         f.write('read -p "[>>»]: " choice\n')
-        f.write('echo "${choice}" > srch_q_choice.txt\n')
+        f.write('echo "${choice}" > <SEARCH_OR_UPDATE>_q_choice.txt\n')
 
         f.write("tput clear\n")
         f.write("tput sgr0\n")
         f.write("tput rc")
 
-    subprocess.run("sudo chmod +x srch_q.bash", cwd=os.getcwd(), shell=True)
+    subprocess.run("sudo chmod +x <SEARCH_OR_UPDATE>_q.bash", cwd=os.getcwd(), shell=True)
     subprocess.run("./srch_q.bash", cwd=os.getcwd(), shell=True)
 
 
@@ -81,16 +71,20 @@ def srch_question():
 def db_call():
     """
     Using the inofrmation gathered from
-    'srch_q_choice.txt', it'll call the
+    '<SEARCH_OR_UPDATE>_q_choice.txt', it'll call the
     database. With this data it'll encode
     the 'pwdid' value to int, so as to
     obtain the 'context' value used to
-    encrypt the entry, decrypt the 'pwd'
+    encrypt the entry, decrypt the encrypted
     value, create a new list with the
-    updated value and send it to a pickle
+    updated values and send it to a pickle
     file.
     """
 
+    # WARNING!! THIS ENVIRONMENT VARIABLES ARE FOR THE 'PWD' DATABASE.
+    # IF YOU'RE WORKING WITH A DIFFERENT DATABASE, YOU'LL HAVE TO 
+    # CREATE YOUR OWN VARIABLES AS WELL AS ADD ALL ENCRYPTION INFO IN
+    # 'SECRETS'.
     # Location of the database's encryption key.
     enc_key = os.getenv("PWD_KEY_LOC")
 
@@ -103,9 +97,9 @@ def db_call():
         dirty_srch = f.read()
         search = dirty_srch.strip()
 
-    query = f"SELECT pwdid, site, username, pwd, comment, time FROM pwd WHERE site LIKE '{search}%'"
+    query = f"SELECT <COLUMN>, <COLUMN> FROM <DATABASE> WHERE <COLUMN> LIKE '{search}%'"
     try:
-        conn = sqlite3.connect("pwd.db")
+        conn = sqlite3.connect("<DATABASE>.db")
         cur = conn.cursor()
         cur.execute(
             query,
@@ -118,33 +112,34 @@ def db_call():
         if err_msg:
             return query, err_msg
 
-    # Adds, after 'pwdid', another item that is 'pwdid' turned to bytes.
+    # Ads, after 'id', another item that is 'id' turned to bytes.
     # This is the 'context' value that was used to encrypt the entry.
     context_values = [
         (z, z.to_bytes(2, sys.byteorder), x, c, b, n, m) for z, x, c, b, n, m in records
     ]
 
-    pwd_bytes = []
+    <DATABASE>_bytes = []
     try:
         for tup in context_values:
             dec = cell.decrypt(tup[4], tup[1])
             # As it's not needed anymore, we don't collect the b'id' item from the list.
-            pwd_bytes.append((tup[0], tup[2], tup[3], dec, tup[5], tup[6]))
+            <DATABASE>_bytes.append((tup[0], tup[2], tup[3], dec, tup[5], tup[6]))
     except ThemisError as e:
         print(e)
-    # We convert the password value from bytes to strings.
-    pwd_dec = [(a, b, c, d.decode("latin-1"), e, f) for a, b, c, d, e, f in pwd_bytes]
-    # As some passwords have double quotation marks that confuse bash, we escape them.
-    pwd_strs = [(a, b, c, d.replace('"', '\\"'), e, f) for a, b, c, d, e, f in pwd_dec]
 
-    with open("srch_db_call.bin", "wb") as g:
-        pickle.dump(pwd_strs, g)
+    # We convert the password value from bytes to strings.
+    <DATABASE>_dec = [(a, b, c, d.decode("latin-1"), e, f) for a, b, c, d, e, f in pwd_bytes]
+    # As some passwords have double quotation marks that confuse bash, we escape them.
+    <DATABASE>_strs = [(a, b, c, d.replace('"', '\\"'), e, f) for a, b, c, d, e, f in pwd_dec]
+
+    with open("<SEARCH_OR_UPDATE>_db_call.bin", "wb") as g:
+        pickle.dump(<DATABASE>_strs, g)
 
     return query
 
 
 @snoop
-def srch_answer():
+def <SEARCH_OR_UPDATE>_answer():
     """
     Generates a Tput window with the db's search results.
     """
@@ -152,7 +147,7 @@ def srch_answer():
     cnf = tput_config()
 
     entries = []
-    with open("srch_db_call.bin", "rb") as f:
+    with open("<SEARCH_OR_UPDATE>_db_call.bin", "rb") as f:
         while True:
             try:
                 entries.append(pickle.load(f))
@@ -187,27 +182,12 @@ def srch_answer():
                 f.write(
                     f"tput cup {cnf['separator_height'] + (rng_lst[0] + 2)} {cnf['init_width']}\n"
                 )
-                f.write(f"echo 'ID. {results[i][0]}'\n")
+                f.write(f"echo '<COLUMN_NAME>. {results[i][0]}'\n")
                 f.write(
                     f"tput cup {cnf['separator_height'] + (rng_lst[1] + 2)} {cnf['init_width']}\n"
                 )
-                f.write(f'echo "Site. {results[i][1]}"\n')
-                f.write(
-                    f"tput cup {cnf['separator_height'] + (rng_lst[2] + 2)} {cnf['init_width']}\n"
-                )
-                f.write(f'echo "Username. {results[i][2]}"\n')
-                f.write(
-                    f"tput cup {cnf['separator_height'] + (rng_lst[3] + 2)} {cnf['init_width']}\n"
-                )
-                f.write(f"echo 'Password. {results[i][3]}'\n")
-                f.write(
-                    f"tput cup {cnf['separator_height'] + (rng_lst[4] + 2)} {cnf['init_width']}\n"
-                )
-                f.write(f'echo "Comment. {results[i][4]}"\n')
-                f.write(
-                    f"tput cup {cnf['separator_height'] + (rng_lst[5] + 2)} {cnf['init_width']}\n"
-                )
-                f.write(f'echo "Time. {results[i][5]}"\n')
+                f.write(f'echo "<NEXT_COLUMN_NAME>. {results[i][1]}"\n')
+                # REPEAT FOR AS MANY COLUMNS AS YOU CHOSE TO USE.
             else:
                 # 'upper' represents the last height number used. So we know that we have to
                 # use heights 'higher' than that value.
@@ -229,29 +209,14 @@ def srch_answer():
                 f.write(
                     f"tput cup {cnf['separator_height'] + rng_lst[0] + 2} {cnf['init_width']}\n"
                 )
-                f.write(f"echo 'ID. {results[i][0]}'\n")
+                f.write(f"echo '<COLUMN_NAME>. {results[i][0]}'\n")
                 f.write(
                     f"tput cup {cnf['separator_height'] + rng_lst[1] + 2} {cnf['init_width']}\n"
                 )
-                f.write(f"echo 'Site. {results[i][1]}'\n")
-                f.write(
-                    f"tput cup {cnf['separator_height'] + rng_lst[2] + 2} {cnf['init_width']}\n"
-                )
-                f.write(f"echo 'Username. {results[i][2]}'\n")
-                f.write(
-                    f"tput cup {cnf['separator_height'] + rng_lst[3] + 2} {cnf['init_width']}\n"
-                )
-                f.write(f'echo "Password. {results[i][3]}"\n')
-                f.write(
-                    f"tput cup {cnf['separator_height'] + rng_lst[4] + 2} {cnf['init_width']}\n"
-                )
-                f.write(f"echo 'Comment. {results[i][4]}'\n")
-                f.write(
-                    f"tput cup {cnf['separator_height'] + rng_lst[5] + 2} {cnf['init_width']}\n"
-                )
-                f.write(f"echo 'Time. {results[i][5]}'\n")
+                f.write(f"echo '<NEXT_COLUMN_NAME>. {results[i][1]}'\n")
+                # REPEAT FOR AS MANY COLUMNS AS YOU CHOSE TO USE.
         f.write("echo ' '\n")
-        f.write(f"tput cup {int(cnf['height'] + 1)} {cnf['init_width']}\n")
+        f.write(f"tput cup {cnf['space_under_separator']} {cnf['init_width']}\n")
         f.write("read -p 'Press any key to exit. ' choice\n")
         f.write('echo "${choice}" > /dev/null\n')
 
@@ -259,20 +224,20 @@ def srch_answer():
         f.write("tput sgr0\n")
         f.write("tput rc")
 
-    subprocess.run("sudo chmod +x srch_results.bash", cwd=os.getcwd(), shell=True)
-    subprocess.run("./srch_results.bash", cwd=os.getcwd(), shell=True)
+    subprocess.run("sudo chmod +x <SEARCH_OR_UPDATE>_results.bash", cwd=os.getcwd(), shell=True)
+    subprocess.run("./<SEARCH_OR_UPDATE>_results.bash", cwd=os.getcwd(), shell=True)
 
 
 @snoop
-def call_srch():
+def call_<SEARCH_OR_UPDATE>():
     """
     Calls the previous functions.
     It's called by 'main'.
     """
-    srch_question()
+    <SEARCH_OR_UPDATE>_question()
     db_call()
-    srch_answer()
+    <SEARCH_OR_UPDATE>_answer()
 
 
 if __name__ == "__main__":
-    call_srch()
+    call_<SEARCH_OR_UPDATE>()

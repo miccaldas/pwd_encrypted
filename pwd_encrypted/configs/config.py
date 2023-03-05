@@ -34,6 +34,7 @@ def tput_config():
     lines = termsize.lines
     init_pos = f"{init_height} {init_width}"
     separator_height = int(init_height + 3)
+    space_under_separator = int(height - 1)
 
     # Builds a dictionary that other modules can use.
     tputs["width"] = width
@@ -42,6 +43,7 @@ def tput_config():
     tputs["init_width"] = init_width
     tputs["init_pos"] = init_pos
     tputs["separator_height"] = separator_height
+    tputs["space_under_separator"] = space_under_separator
     tputs[
         "separator"
     ] = "------------------------------ [X] ------------------------------"

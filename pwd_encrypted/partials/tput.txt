@@ -1,23 +1,25 @@
+    title_width = int(cnf["cnf['init_width']"] + (len(cnf["separator"]) / 2) - (len("<SOME_TITLE>") / 2))
+
 # WINDOW START
     with open("<SOME_NAME>.bash", "w") as f:
          f.write("#!/usr/bin/env bash\n\n")
          f.write("tput clear\n\n")
-         f.write(f"tput cup {init_pos}\n")
-         f.write(f"tput setaf {title_color}\n")
+         f.write(f"tput cup {cnf['init_pos']}\n")
+         f.write(f"tput setaf {cnf['title_color']}\n")
          f.write("tput bold\n")
          f.write('echo "<SOME_TITLE>"\n')
          f.write("tput sgr0\n\n")
-
-         f.write(f"tput cup {separator_height} {init_width}\n")
-         f.write(f"echo '{Add.separator}'\n")
+         f.write(f"tput cup {cnf['separator_height']} {cnf['init_width']}\n")
+         f.write(f"echo '{cnf['separator']}'\n")
 
 # PRINTING TO THE WINDOW
-         f.write(f"tput cup {separator_height + 2} {init_width}\n")
+         f.write(f"tput cup {cnf['separator_height'] + 2} {cnf['init_width']}\n")
          f.write(f'echo "{<SOME_TEXT_STRING>_str}"\n')
 
 # PRINTING IN A LOOP
 # VALUES IN THE 'ECHO' STATEMENTS ARE THERE ONLY AS AN EXAMPLE
 # USE YOUR OWN.
+        for i in range(len(results)):
             # The way the page was consructed was that each entry set would know the
             # last height position used, so as to be able to start printing after that
             # value. The first entry has no past, so it had to be dealt separately.
@@ -27,9 +29,9 @@
                 # List with all the numbers of rng range.
                 rng_lst = [int(r) for r in rng]
                 f.write(
-                    f"tput cup {init_height + (rng_lst[0] + 2)} {init_width}\n")
+                    f"tput cup {cnf['separator_height'] + (rng_lst[0] + 2)} {cnf['init_width']}\n")
                 f.write(f"echo 'ID. {results[i][0]}'\n")
-                f.write(f"tput cup {init_height + (rng_lst[1] + 2)} {init_width}\n")
+                f.write(f"tput cup {cnf['separator_height'] + (rng_lst[1] + 2)} {cnf['init_width']}\n")
                 f.write(f'echo "Title. {results[i][1]}"\n')
                 # USE AS MANY TPUT/ECHO BLOCKS AS THE NUMBER OF COLUMNS YOU WANT TO SHOW
             else:
@@ -51,16 +53,17 @@
                 rng_lst = [i for i in init_rng]
                 f.write('echo " "\n')
                 f.write(
-                    f"tput cup {init_height + rng_lst[0] + 2} {init_width}\n"
+                    f"tput cup {cnf['separator_height'] + rng_lst[0] + 2} {cnf['init_width']}\n"
                 )
                 f.write(f"echo 'ID. {results[i][0]}'\n")
                 f.write(
-                    f"tput cup {init_height + rng_lst[1] + 2} {init_width}\n" 
+                    f"tput cup {cnf['separator_height'] + rng_lst[1] + 2} {cnf['init_width']}\n" 
+                    )
                 # USE AS MANY TPUT/ECHO BLOCKS AS THE NUMBER OF COLUMNS YOU WANT TO SHOW
 
 
 # COLLECTING VAR VALUE FROM BASH SCRIPT
-         f.write(f"tput cup {init_height + 6} {init_width}\n")
+         f.write(f"tput cup {cnf['separator_height'] + 6} {cnf['init_width']}\n")
          f.write(f'read -p "{<SOME_VAR>_str}: " choice\n')
          f.write('echo "${choice}" > <SOME_VAR>_choice.txt\n')
 
