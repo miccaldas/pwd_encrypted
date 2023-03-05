@@ -5,9 +5,10 @@ just create a new function to house them and call it from
 whatever module needs it.
 """
 import os
-
+import subprocess
 import snoop
 from snoop import pp
+from dotenv import load_dotenv
 
 
 def type_watch(source, value):
@@ -16,8 +17,10 @@ def type_watch(source, value):
 
 snoop.install(watch_extras=[type_watch])
 
+load_dotenv()
 
-@snoop
+
+# @snoop
 def tput_config():
     """
     Configuration variables for Tput windows.
@@ -54,3 +57,60 @@ def tput_config():
 
 if __name__ == "__main__":
     tput_config()
+
+
+class Efs:
+    """
+    Houses three methods,
+    1. create,
+    2, mount.
+    3, unmount.
+    'create' has already ran
+    and, probably, we won't
+    be needing it again. The
+    other two start and stop
+    the encryption in PWD_SEC_LOC
+    """
+    dec = os.getenv("PWD_SEC_LOC")
+    enc = os.getenv("PWD_ENC_LOC")
+    encfs_pwd = os.getenv("PWD_FLD_KEY")
+
+    def __init__(self):
+        pass
+
+    #@snoop
+    def create(self):
+        """
+        Creates a new fylesystem.
+        This was already run and
+        doesn't need to be ran
+        again, except in case of
+        catastrophic failure.
+        It's here for documentaion
+        purposes.
+        """
+
+        cmd = f"echo '{Efs.encfs_pwd}' | encfs --standard --stdinpass {Efs.enc} {Efs.dec}"
+        # cmd = f'echo "Ih|%çe\`Vknu;)0AO_lLUT5iH-Gx^qo9j<3fm$>8d.7SY2" | encfs --stdinpass {enc} {dec}'
+        subprocess.run(cmd, shell=True)
+
+    #@snoop
+    def mount(self):
+        """ 
+        Mounts the encrypted folder back up.
+        You'll see now files inside the folder.
+        """
+
+        cmd = f"echo '{Efs.encfs_pwd}' | encfs --stdinpass {Efs.enc} {Efs.dec}"
+        subprocess.run(cmd, shell=True)
+
+    #@snoop
+    def unmount(self):
+        """
+        When unmounting, the 'pwd' folder will
+        appear empty and 'pwd_enc' encrypted
+        versions will still be visible
+        """
+
+        cmd = f"encfs -u {Efs.dec}"
+        subprocess.run(cmd, shell=True)

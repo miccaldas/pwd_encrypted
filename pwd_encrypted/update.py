@@ -11,7 +11,7 @@ from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
 from snoop import pp
 
-from configs.config import tput_config
+from configs.config import Efs, tput_config
 
 
 def type_watch(source, value):
@@ -85,56 +85,71 @@ def db_call():
     file.
     """
 
-    # Location of the database's encryption key.
+    # These are location variables, defined in '.env'.
     enc_key = os.getenv("PWD_KEY_LOC")
+    res_pth = os.getenv("PWD_SEC_LOC")
+    themis_key = os.getenv("PWD_KEY_LOC")
+    # Declaring the class, kept in 'configs/config.py',
+    # that controls the behaviour of Encfs, the
+    # encrypted virtual  filesystem used to encrypt the
+    # folder with the databases' more sensitive information.
+    fs = Efs()
+    # 'res_path' is the path to the 'pwd' folder. If it's not
+    # mounted, it'll appear empty.
+    pwd_lst = os.listdir(f"{res_pth}")
+    if pwd_lst == []:
+        # Mounts the filesystem.
+        fs.mount()
+    # In principle we already opened the filesystem in the
+    # beginning of the module, but you never know.
+    if pwd_lst != []:
+        with open(f"{enc_key}", "rb") as g:
+            sym_key = pickle.load(g)
+            cell = SCellSeal(key=sym_key)
 
-    with open(f"{enc_key}", "rb") as g:
-        sym_key = pickle.load(g)
-        cell = SCellSeal(key=sym_key)
+        with open("update_id_choice.txt", "r") as f:
+            dirty_id = f.read()
+            pwdid = dirty_id.strip()
+        with open("update_col_choice.txt", "r") as f:
+            dirty_col = f.read()
+            col = dirty_col.strip()
+        with open("update_updt_choice.txt", "r") as f:
+            dirty_updt = f.read()
+            updt = dirty_updt.strip()
 
-    with open("update_id_choice.txt", "r") as f:
-        dirty_id = f.read()
-        pwdid = dirty_id.strip()
-    with open("update_col_choice.txt", "r") as f:
-        dirty_col = f.read()
-        col = dirty_col.strip()
-    with open("update_updt_choice.txt", "r") as f:
-        dirty_updt = f.read()
-        updt = dirty_updt.strip()
+        conn = sqlite3.connect("pwd.db")
+        cur = conn.cursor()
+        if col == "pwd":
+            try:
+                bval = int(pwdid).to_bytes(2, sys.byteorder)
+                btri = bytes(updt, "latin-1")
+                encrypted = cell.encrypt(btri, bval)
+                query = f"UPDATE pwd SET {col} = '{encrypted}' WHERE pwdid = {pwdid}"
+                cur.execute(
+                    query,
+                )
+                conn.commit()
+                conn.close()
+            except sqlite3.Error as e:
+                err_msg = "Error while connecting to db", e
+                print("Error while connecting to db", e)
+                if err_msg:
+                    return query, err_msg
+        else:
+            try:
+                query = f"UPDATE pwd SET {col} = '{updt}' WHERE pwdid = {pwdid}"
+                cur.execute(
+                    query,
+                )
+                conn.commit()
+                conn.close()
+            except sqlite3.Error as e:
+                err_msg = "Error while connecting to db ", e
+                print("Error while connecting to db ", e)
+                if err_msg:
+                    return query, err_msg
 
-    conn = sqlite3.connect("pwd.db")
-    cur = conn.cursor()
-    if col == "pwd":
-        try:
-            bval = int(pwdid).to_bytes(2, sys.byteorder)
-            btri = bytes(updt, "latin-1")
-            encrypted = cell.encrypt(btri, bval)
-            query = f"UPDATE pwd SET {col} = '{encrypted}' WHERE pwdid = {pwdid}"
-            cur.execute(
-                query,
-            )
-            conn.commit()
-            conn.close()
-        except sqlite3.Error as e:
-            err_msg = "Error while connecting to db", e
-            print("Error while connecting to db", e)
-            if err_msg:
-                return query, err_msg
-    else:
-        try:
-            query = f"UPDATE pwd SET {col} = '{updt}' WHERE pwdid = {pwdid}"
-            cur.execute(
-                query,
-            )
-            conn.commit()
-            conn.close()
-        except sqlite3.Error as e:
-            err_msg = "Error while connecting to db ", e
-            print("Error while connecting to db ", e)
-            if err_msg:
-                return query, err_msg
-
-    return query
+        return query
 
 
 @db_information
@@ -169,7 +184,7 @@ def update_answer():
     # we'll replace by the '<ENCRYPTED>' string. The id value has to be converted
     # to string because, in the next step we'll look for the length of every 'test'
     # element, and int() has no len() property.
-    test = [(str(a), b, c, "<ENCRYPTED>", d, e) for a, b, c, d, e in records]
+    test = [(str(a), b, c, "<ENCRYPTED>", d, e, f) for a, b, c, d, e, f in records]
     # The titles of the variables that will be in the table.
     names = ["id", "site", "user", "pwd", "comment", "time"]
     # List with the length of the name strings.
@@ -237,7 +252,7 @@ def update_answer():
     ntraces = f"+-{traces}-+"
     # The len() of ntraces'. It'll be needed further along.
     ud_len = len(ntraces)
-    
+
     # Calls the user-generated default values for 'Tput'. These variables are brought from
     # 'configs/config.py'
     cnf = tput_config()
