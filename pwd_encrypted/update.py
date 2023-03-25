@@ -23,7 +23,7 @@ snoop.install(watch_extras=[type_watch])
 load_dotenv()
 
 
-# @snoop
+@snoop
 def update_question():
     """
     Generates a Tput window with a question.
@@ -71,7 +71,7 @@ def update_question():
 
 
 @db_information
-# @snoop
+@snoop
 def db_call():
     """
     Using the inofrmation gathered from
@@ -153,7 +153,7 @@ def db_call():
 
 
 @db_information
-# @snoop
+@snoop
 def update_answer():
     """
     Gets the newly created line from the database, builds a
@@ -184,7 +184,7 @@ def update_answer():
     # we'll replace by the '<ENCRYPTED>' string. The id value has to be converted
     # to string because, in the next step we'll look for the length of every 'test'
     # element, and int() has no len() property.
-    test = [(str(a), b, c, "<ENCRYPTED>", d, e, f) for a, b, c, d, e, f in records]
+    test = [(str(a), b, c, "<ENCRYPTED>", d, e) for a, b, c, d, e in records]
     # The titles of the variables that will be in the table.
     names = ["id", "site", "user", "pwd", "comment", "time"]
     # List with the length of the name strings.
@@ -337,6 +337,9 @@ def call_update():
     update_question()
     db_call()
     update_answer()
+
+    fs = Efs()
+    fs.unmount()
 
 
 if __name__ == "__main__":

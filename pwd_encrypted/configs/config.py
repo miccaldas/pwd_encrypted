@@ -26,7 +26,7 @@ def tput_config():
     Configuration variables for Tput windows.
     """
 
-    # Variable declaration. The variables that are here are the result, in form
+    # Variable declaration. The variables that are here are the result, in one form
     # or another, of python code. It just seems cleaner to present them this way.
     tputs = dict()
     termsize = os.get_terminal_size()
@@ -34,7 +34,6 @@ def tput_config():
     height = termsize.lines
     init_height = int(height / 4)
     init_width = int(width / 4)
-    lines = termsize.lines
     init_pos = f"{init_height} {init_width}"
     separator_height = int(init_height + 3)
     space_under_separator = int(height - 1)
@@ -91,7 +90,6 @@ class Efs:
         """
 
         cmd = f"echo '{Efs.encfs_pwd}' | encfs --standard --stdinpass {Efs.enc} {Efs.dec}"
-        # cmd = f'echo "Ih|%çe\`Vknu;)0AO_lLUT5iH-Gx^qo9j<3fm$>8d.7SY2" | encfs --stdinpass {enc} {dec}'
         subprocess.run(cmd, shell=True)
 
     #@snoop

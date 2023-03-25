@@ -39,7 +39,7 @@ snoop.install(watch_extras=[type_watch])
 load_dotenv()
 
 
-#@snoop
+@snoop
 def srch_question():
     """
     Generates a Tput window with a question.
@@ -78,7 +78,7 @@ def srch_question():
 
 
 @db_information
-#@snoop
+@snoop
 def db_call():
     """
     Using the inofrmation gathered from
@@ -163,7 +163,7 @@ def db_call():
         return query
 
 
-#@snoop
+@snoop
 def srch_answer():
     """
     Generates a Tput window with the db's search results.
@@ -321,7 +321,7 @@ def srch_answer():
     subprocess.run("./srch_results.bash", cwd=os.getcwd(), shell=True)
 
 
-#@snoop
+@snoop
 def call_srch():
     """
     Calls the previous functions.

@@ -37,7 +37,7 @@ snoop.install(watch_extras=[type_watch])
 load_dotenv()
 
 
-# @snoop
+@snoop
 def first_input_window():
     """
     Agreggates the site, username and password authorship
@@ -91,7 +91,7 @@ def first_input_window():
 
 
 @db_information
-# @snoop
+@snoop
 def check_repeats():
     """
     We check with the database to see if there's already an entry with
@@ -197,7 +197,7 @@ def check_repeats():
         print("Couldn't find 'sitio_choice.txt' file")
 
 
-# @snoop
+@snoop
 def pwd_authorship():
     """
     Checks if the user wants to author the password or not,
@@ -250,7 +250,7 @@ def pwd_authorship():
         print("Couldn't find 'author_choice.txt'.")
 
 
-# @snoop
+@snoop
 def second_input_window():
     """
     This method ends the questionnary. We'll create
@@ -313,7 +313,7 @@ def second_input_window():
 
 
 @db_information
-# @snoop
+@snoop
 def add_upld_db_call():
     """
     Collects all information gathered by the questions of
@@ -338,7 +338,6 @@ def add_upld_db_call():
         fs.mount()
 
     lst_files = os.listdir(os.getcwd())
-
     with open("sitio_choice.txt", "r") as d:
         dirty_site = d.read()
         sitio = dirty_site.strip()
@@ -388,57 +387,55 @@ def add_upld_db_call():
                     passwd = samp_str.replace(" ", "")
         if pwd_request == "y":
             pass
-        # In principle we already opened the filesystem in the
-        # beginning of the module, but you never know.
-        if pwd_lst != []:
-            with open(f"{enc_key}", "rb") as b:
-                sym_key = pickle.load(b)
-            cell = SCellSeal(key=sym_key)
-            # Turns string to bytes()
-            bpasswd = passwd.encode("latin-1")
-            # 'randrange' chooses a number between 100 and 1000.
-            cont = randrange(100, 1000)
-            # Convert resulting integer of last operation, to a bytes type object.
-            con = cont.to_bytes(2, sys.byteorder)
-            # We encrypt it with Themis.
-            encrypted = cell.encrypt(bpasswd, con)
 
-            try:
-                # Here we begin the info insertion to the db. We added a column, 'context', that'll be filled
-                # with the value of 'con'. In other modules we were always encrypting values that were already
-                # in the db; so we used the id number of the lines as the context value. But now we're creating
-                # a new line, there's no id value to guide us. Adding 1 to the highest current id value, doesn't
-                # work, because if a line was erased and it was above the current max() result, that number won't
-                # be used again. It'll skip it and start counting from then on. This makes trying to predict the
-                # next id value a dangerous proposition. Instead we'll use Cryptodome's 'Random' module to choose
-                # a number, trn it to bytes() and shove it to its own column in the db.
-                query = "INSERT INTO pwd (site, username, pwd, comment, context) VALUES (?1, ?2, ?3, ?4, ?5)"
-                answers = [sitio, username, encrypted, comment, con]
-                sqlite3.enable_callback_tracebacks(True)
-                conn = sqlite3.connect("pwd.db")
-                cur = conn.cursor()
-                cur.execute(query, answers)
-                conn.commit()
-            except sqlite3.Error as e:
-                err_msg = "Error connecting to db", e
-                print("Error connecting to db", e)
-                if err_msg:
-                    return query, err_msg
-            finally:
-                if conn:
-                    conn.close()
+    with open(f"{enc_key}", "rb") as b:
+        sym_key = pickle.load(b)
+    cell = SCellSeal(key=sym_key)
+    # Turns string to bytes()
+    bpasswd = passwd.encode("latin-1")
+    # 'randrange' chooses a number between 100 and 1000.
+    cont = randrange(100, 1000)
+    # Convert resulting integer of last operation, to a bytes type object.
+    con = cont.to_bytes(2, sys.byteorder)
+    # We encrypt it with Themis.
+    encrypted = cell.encrypt(bpasswd, con)
 
-            truncated = [sitio, username, "<ENCRYPTED>", comment]
-            with open("answers.bin", "wb") as y:
-                pickle.dump(truncated, y)
+    try:
+        # Here we begin the info insertion to the db. We added a column, 'context', that'll be filled
+        # with the value of 'con'. In other modules we were always encrypting values that were already
+        # in the db; so we used the id number of the lines as the context value. But now we're creating
+        # a new line, there's no id value to guide us. Adding 1 to the highest current id value, doesn't
+        # work, because if a line was erased and it was above the current max() result, that number won't
+        # be used again. It'll skip it and start counting from then on. This makes trying to predict the
+        # next id value a dangerous proposition. Instead we'll use Cryptodome's 'Random' module to choose
+        # a number, turn it to bytes() and put it to its own column in the db.
+        query = "INSERT INTO pwd (site, username, pwd, comment, context) VALUES (?1, ?2, ?3, ?4, ?5)"
+        answers = [sitio, username, encrypted, comment, con]
+        sqlite3.enable_callback_tracebacks(True)
+        conn = sqlite3.connect("pwd.db")
+        cur = conn.cursor()
+        cur.execute(query, answers)
+        conn.commit()
+    except sqlite3.Error as e:
+        err_msg = "Error connecting to db", e
+        print("Error connecting to db", e)
+        if err_msg:
+            return query, err_msg
+    finally:
+        if conn:
+            conn.close()
 
-                return query
+    truncated = [sitio, username, "<ENCRYPTED>", comment]
+    with open("answers.bin", "wb") as y:
+        pickle.dump(truncated, y)
+
+        return query
 
 
-# @snoop
+@snoop
 def add_feedback_window():
     """
-    Builds a window wuth the values supplied by the user. So he
+    Builds a window with the values supplied by the user. So he
     can verify if everything is correct. Presented as a ascii table.
     """
     with open("answers.bin", "rb") as u:
@@ -461,7 +458,7 @@ def add_feedback_window():
     # the highest length value of each list.
     hi_ln_val = []
     hi_ln_nms = []
-    # These two are here because I was gettinf an annoying
+    # These two are here because I was getting an annoying
     # 'unbound local error' error, and this was a simple
     # way of dealing with it.
     hi_len_val = ""
@@ -502,7 +499,7 @@ def add_feedback_window():
     sep = "-"
     # Creates a string, made of '-' characters, with a length calculated
     # by multiplying 'sep' by 'vh'. This assures that the table won't be
-    # smaller than the sum of its longest merbers.
+    # smaller than the sum of its longest members.
     traces = "".join(sep * vh)
     # The borders in ascii boxes have '+' signs on their vertices, start two
     # pixels before the cell content, and end two pixels after their end.
@@ -602,3 +599,7 @@ def call_add():
 
     fs = Efs()
     fs.unmount()
+
+
+if __name__ == "__main__":
+    call_add()
