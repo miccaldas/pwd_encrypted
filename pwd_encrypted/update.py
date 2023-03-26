@@ -23,7 +23,7 @@ snoop.install(watch_extras=[type_watch])
 load_dotenv()
 
 
-@snoop
+# @snoop
 def update_question():
     """
     Generates a Tput window with a question.
@@ -71,7 +71,7 @@ def update_question():
 
 
 @db_information
-@snoop
+# @snoop
 def db_call():
     """
     Using the inofrmation gathered from
@@ -100,60 +100,57 @@ def db_call():
     if pwd_lst == []:
         # Mounts the filesystem.
         fs.mount()
-    # In principle we already opened the filesystem in the
-    # beginning of the module, but you never know.
-    if pwd_lst != []:
-        with open(f"{enc_key}", "rb") as g:
-            sym_key = pickle.load(g)
-            cell = SCellSeal(key=sym_key)
+    with open(f"{enc_key}", "rb") as g:
+        sym_key = pickle.load(g)
+        cell = SCellSeal(key=sym_key)
 
-        with open("update_id_choice.txt", "r") as f:
-            dirty_id = f.read()
-            pwdid = dirty_id.strip()
-        with open("update_col_choice.txt", "r") as f:
-            dirty_col = f.read()
-            col = dirty_col.strip()
-        with open("update_updt_choice.txt", "r") as f:
-            dirty_updt = f.read()
-            updt = dirty_updt.strip()
+    with open("update_id_choice.txt", "r") as f:
+        dirty_id = f.read()
+        pwdid = dirty_id.strip()
+    with open("update_col_choice.txt", "r") as f:
+        dirty_col = f.read()
+        col = dirty_col.strip()
+    with open("update_updt_choice.txt", "r") as f:
+        dirty_updt = f.read()
+        updt = dirty_updt.strip()
 
-        conn = sqlite3.connect("pwd.db")
-        cur = conn.cursor()
-        if col == "pwd":
-            try:
-                bval = int(pwdid).to_bytes(2, sys.byteorder)
-                btri = bytes(updt, "latin-1")
-                encrypted = cell.encrypt(btri, bval)
-                query = f"UPDATE pwd SET {col} = '{encrypted}' WHERE pwdid = {pwdid}"
-                cur.execute(
-                    query,
-                )
-                conn.commit()
-                conn.close()
-            except sqlite3.Error as e:
-                err_msg = "Error while connecting to db", e
-                print("Error while connecting to db", e)
-                if err_msg:
-                    return query, err_msg
-        else:
-            try:
-                query = f"UPDATE pwd SET {col} = '{updt}' WHERE pwdid = {pwdid}"
-                cur.execute(
-                    query,
-                )
-                conn.commit()
-                conn.close()
-            except sqlite3.Error as e:
-                err_msg = "Error while connecting to db ", e
-                print("Error while connecting to db ", e)
-                if err_msg:
-                    return query, err_msg
+    conn = sqlite3.connect("pwd.db")
+    cur = conn.cursor()
+    if col == "pwd":
+        try:
+            bval = int(pwdid).to_bytes(2, sys.byteorder)
+            btri = bytes(updt, "latin-1")
+            encrypted = cell.encrypt(btri, bval)
+            query = f"UPDATE pwd SET {col} = '{encrypted}' WHERE pwdid = {pwdid}"
+            cur.execute(
+                query,
+            )
+            conn.commit()
+            conn.close()
+        except sqlite3.Error as e:
+            err_msg = "Error while connecting to db", e
+            print("Error while connecting to db", e)
+            if err_msg:
+                return query, err_msg
+    else:
+        try:
+            query = f"UPDATE pwd SET {col} = '{updt}' WHERE pwdid = {pwdid}"
+            cur.execute(
+                query,
+            )
+            conn.commit()
+            conn.close()
+        except sqlite3.Error as e:
+            err_msg = "Error while connecting to db ", e
+            print("Error while connecting to db ", e)
+            if err_msg:
+                return query, err_msg
 
-        return query
+    return query
 
 
 @db_information
-@snoop
+# @snoop
 def update_answer():
     """
     Gets the newly created line from the database, builds a
@@ -328,7 +325,7 @@ def update_answer():
     subprocess.run("./res_update.bash", cwd=os.getcwd(), shell=True)
 
 
-@snoop
+# @snoop
 def call_update():
     """
     Calls the previous functions.

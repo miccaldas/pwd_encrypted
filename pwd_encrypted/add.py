@@ -37,7 +37,7 @@ snoop.install(watch_extras=[type_watch])
 load_dotenv()
 
 
-@snoop
+# @snoop
 def first_input_window():
     """
     Agreggates the site, username and password authorship
@@ -91,7 +91,7 @@ def first_input_window():
 
 
 @db_information
-@snoop
+# @snoop
 def check_repeats():
     """
     We check with the database to see if there's already an entry with
@@ -197,7 +197,7 @@ def check_repeats():
         print("Couldn't find 'sitio_choice.txt' file")
 
 
-@snoop
+# @snoop
 def pwd_authorship():
     """
     Checks if the user wants to author the password or not,
@@ -250,7 +250,7 @@ def pwd_authorship():
         print("Couldn't find 'author_choice.txt'.")
 
 
-@snoop
+# @snoop
 def second_input_window():
     """
     This method ends the questionnary. We'll create
@@ -313,7 +313,7 @@ def second_input_window():
 
 
 @db_information
-@snoop
+# @snoop
 def add_upld_db_call():
     """
     Collects all information gathered by the questions of
@@ -432,7 +432,7 @@ def add_upld_db_call():
         return query
 
 
-@snoop
+# @snoop
 def add_feedback_window():
     """
     Builds a window with the values supplied by the user. So he
