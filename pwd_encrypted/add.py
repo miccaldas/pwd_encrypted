@@ -18,7 +18,6 @@ from string import punctuation
 
 import snoop
 from Cryptodome.Random.random import randrange
-from db_decorator.db_information import db_information
 from dotenv import load_dotenv
 from english_words import get_english_words_set
 from pythemis.exception import ThemisError
@@ -90,7 +89,6 @@ def first_input_window():
     subprocess.run("./add.bash", cwd=os.getcwd(), shell=True)
 
 
-@db_information
 # @snoop
 def check_repeats():
     """
@@ -312,7 +310,6 @@ def second_input_window():
             subprocess.run("./second_input.bash", cwd=os.getcwd(), shell=True)
 
 
-@db_information
 # @snoop
 def add_upld_db_call():
     """

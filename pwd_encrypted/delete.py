@@ -14,7 +14,6 @@ import sqlite3
 import subprocess
 
 import snoop
-from db_decorator.db_information import db_information
 from snoop import pp
 
 from configs.config import tput_config

@@ -12,7 +12,6 @@ import subprocess
 import sys
 
 import snoop
-from db_decorator.db_information import db_information
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
@@ -32,7 +31,6 @@ enc_key = os.getenv("PWD_KEY_LOC")
 pwd_id = os.getenv("PWD_DB_ID")
 
 
-@db_information
 @snoop
 def encrypt():
     """

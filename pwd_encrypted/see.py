@@ -9,7 +9,6 @@ import subprocess
 import sys
 
 import snoop
-from db_decorator.db_information import db_information
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
@@ -27,7 +26,6 @@ snoop.install(watch_extras=[type_watch])
 load_dotenv()
 
 
-@db_information
 # @snoop
 def db_call():
     """

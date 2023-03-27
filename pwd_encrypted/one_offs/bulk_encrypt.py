@@ -11,7 +11,6 @@ import sys
 
 import snoop
 from Cryptodome.Random.random import randrange
-from db_decorator.db_information import db_information
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
@@ -29,7 +28,6 @@ snoop.install(watch_extras=[type_watch])
 load_dotenv()
 
 
-@db_information
 @snoop
 def get_pwds():
     """
@@ -51,7 +49,6 @@ def get_pwds():
     return query
 
 
-@db_information
 @snoop
 def encpwds():
     """

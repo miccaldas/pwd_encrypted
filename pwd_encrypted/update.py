@@ -5,7 +5,6 @@ import subprocess
 import sys
 
 import snoop
-from db_decorator.db_information import db_information
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
@@ -70,7 +69,6 @@ def update_question():
     subprocess.run("./update_q.bash", cwd=os.getcwd(), shell=True)
 
 
-@db_information
 # @snoop
 def db_call():
     """
@@ -149,7 +147,6 @@ def db_call():
     return query
 
 
-@db_information
 # @snoop
 def update_answer():
     """

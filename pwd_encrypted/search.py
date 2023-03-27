@@ -21,7 +21,6 @@ import sys
 from time import sleep
 
 import snoop
-from db_decorator.db_information import db_information
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
@@ -77,8 +76,7 @@ def srch_question():
     subprocess.run("./srch_q.bash", cwd=os.getcwd(), shell=True)
 
 
-@db_information
-@snoop
+# @snoop
 def db_call():
     """
     Using the inofrmation gathered from
@@ -137,8 +135,9 @@ def db_call():
             if err_msg:
                 return query, err_msg
 
-        # Adds, after 'pwdid', another item that is 'pwdid' turned to bytes.
-        # This is the 'context' value that was used to encrypt the entry.
+        if records == []:
+            print("There's no entry in the database with that name.")
+            sys.exit()
 
         pwd_bytes = []
         try:
