@@ -38,7 +38,7 @@ snoop.install(watch_extras=[type_watch])
 load_dotenv()
 
 
-# @snoop
+@snoop
 def srch_question():
     """
     Generates a Tput window with a question.
@@ -76,7 +76,7 @@ def srch_question():
     subprocess.run("./srch_q.bash", cwd=os.getcwd(), shell=True)
 
 
-# @snoop
+@snoop
 def db_call():
     """
     Using the inofrmation gathered from
@@ -120,7 +120,7 @@ def db_call():
             dirty_srch = f.read()
             search = dirty_srch.strip()
 
-        query = f"SELECT pwdid, site, username, pwd, comment, time, context FROM pwd WHERE site LIKE '{search}%'"
+        query = f"SELECT * FROM pwd_fts WHERE pwd_fts MATCH '{search}'"
         try:
             conn = sqlite3.connect("pwd.db")
             cur = conn.cursor()
@@ -162,7 +162,7 @@ def db_call():
         return query
 
 
-# @snoop
+@snoop
 def srch_answer():
     """
     Generates a Tput window with the db's search results.
@@ -185,7 +185,9 @@ def srch_answer():
 
     # The id value has to be converted to string because, in the next step we'll look for
     # the length of every 'vals' element, and int() has no len() property.
-    vals = [(str(a), b, c, d, e, f) for a, b, c, d, e, f in results]
+    vls = [(str(a), b, c, d.replace(")", "\)"), e, f) for a, b, c, d, e, f in results]
+    vas = [(str(a), b, c, d.replace("(", "\("), e, f) for a, b, c, d, e, f in vls]
+    vals = [(str(a), b, c, f"'{d}'", e, f) for a, b, c, d, e, f in vas]
     # The line title names.
     names = ["id", "site", "user", "pwd", "comment", "time"]
     # List with the length of the values strings.
@@ -196,52 +198,28 @@ def srch_answer():
     # basis that 'vals' and 'names' were pure lists. To conform to that expectation, we
     # change it from a list of tuples to list.
     lens_val = [item for t in lns_val for item in t]
+    hi_ln_val = max(lens_val)
     # List with the length of the names.
     lens_nms = [len(nm) for nm in names]
+    hi_ln_nms = max(lens_nms)
     # We do the same that we did to the lengths list, to 'vals'.
-    values = [item for t in vals for item in t]
-    # The next loop will ascertain from each of the last two lists, which element has the
-    # bigger length. That way we know that the table cell of the respective line, will
-    # have to have at, least, the width of its longer element. The loop compares each
-    # result to a 'standard', which, by convention, is the first element of each list.
-    # The next two variables initiate those values.
-    val_vals = lens_val[0]
-    val_nms = lens_nms[0]
-    # Initiating lists needed for the loop. They'll collect the
-    # the highest length value of each list.
-    hi_ln_val = []
-    hi_ln_nms = []
-    # This two are here because I was getting an annoying 'unbound local error' error.
-    # This was the simplest way of dealing with it.
-    hi_len_val = ""
-    hi_len_nms = ""
-
-    # The loop to calculate the bigger element of each list.
-    # This one is specific to values lengths.
-    for lt in lens_val:
-        if lt > val_vals:
-            val_vals = lt
-            hi_ln_val.append(val_vals)
-    # The loop should, but doesn't, return just one value, it returns all values higher
-    # than the 'standard' value. It returns str(), if it found just one value, and
-    # returns list, if finds several values. If its the latter, we run the 'max' function.
-    if len(hi_ln_val) == 1:
-        hi_len_val = hi_ln_val[0]
-    if len(hi_ln_val) > 1:
-        hi_len_val = max(hi_ln_val)
-    # This loop is the same as the last one, but now for 'names'.
-    for ln in lens_nms:
-        if ln > val_nms:
-            val_nms = ln
-            hi_ln_nms.append(val_nms)
-    if len(hi_ln_nms) == 1:
-        hi_len_nms = hi_ln_nms[0]
-    if len(hi_ln_nms) > 1:
-        hi_len_nms = max(hi_ln_nms)
+    valus = [item for t in vals for item in t]
+    values = []
+    for v in vals:
+        values.append(
+            [
+                ("id", v[0]),
+                ("site", v[1]),
+                ("user", v[2]),
+                ("pwd", v[3]),
+                ("comment", v[4]),
+                ("time", v[5]),
+            ]
+        )
 
     # This variable measures how big a line would be, if it was composed by the lengthiest
     # elements of each list, plus 3. To account for the spaces and separator between name and value.
-    vh = int(hi_len_val + hi_len_nms + 3)
+    vh = int(hi_ln_val + hi_ln_nms + 3)
     # Variable of the character that'll be used to build the top and bottom table separators.
     sep = "-"
     # Creates a string, made of consecutive '-' characters. It'll repeat until reaching the 'vh' value.
@@ -264,52 +242,102 @@ def srch_answer():
         f.write("tput sgr0\n\n")
         f.write(f"tput cup {cnf['separator_height']} {cnf['init_width']}\n")
         f.write(f"echo '{cnf['separator']}'\n")
-
-        # This centers the table below the separator. All table elements will have this width.
         table_width = int(
             cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{ntraces}") / 2)
         )
-        # The top separator line isn't part of the ('name', 'value') list that'll be used to fill
-        # the table, so we print it before the start of the loop.
-        f.write(f"tput cup {cnf['separator_height'] + 3} {table_width}\n")
-        f.write(f"echo '{ntraces}'\n")
-        # We're using a range() value that starts at 1, so the loop count starts at the same value as
-        # the length of the list we'll create inside the loop. As the list will start at 1, we print
-        # what would've been its index[0] element, before the loop.
         first_item_height = int(cnf["separator_height"] + 4)
-        lst_zip = list(zip(names, values))
-        rng_lst_zip = range(1, len(lst_zip))
-        # Creates a list where its elements are the integers inside the range of lst_zip. Necessary
-        # for subsequent list iterations.
-        rng_lst = [int(r) for r in rng_lst_zip]
-        # These are, specifically, dimensions for index[0] line.
-        # The other dimensions are defined inside the loop.
-        n_len0 = int(hi_len_nms - len(lst_zip[0][0]))
-        v_len0 = int(hi_len_val - len(lst_zip[0][1]))
-        space_n0 = "".join(" " * n_len0)
-        space_v0 = "".join(" " * v_len0)
-        # Printing index[0]
-        f.write(f"tput cup {first_item_height} {table_width}\n")
-        f.write(f"echo '| {lst_zip[0][0]}{space_n0} | {lst_zip[0][1]}{space_v0} |'\n")
-        # The loop, counting from lst_zip[1], starts here.
-        for v in rng_lst:
-            n_len = int(hi_len_nms - len(lst_zip[v][0]))
-            v_len = int(hi_len_val - len(lst_zip[v][1]))
-            space_n = "".join(" " * n_len)
-            space_v = "".join(" " * v_len)
-            # We add to the height of last printed element, 'first_item_height', the value of 'v'.
-            # Since the range is starting at 1, it puts the string one line below the other.
-            f.write(f"tput cup {cnf['separator_height'] + v + 4} {table_width}\n")
-            f.write(f"echo '| {lst_zip[v][0]}{space_n} | {lst_zip[v][1]}{space_v} |'\n")
-        # As we want this element to be under the iterated list, we add 1 to its length, because len()
-        # starts at 0, to that we add 1 again so it's one line under the end of loop lines. To this we
-        # add another 2 lines, one for each element that is part of the table but outside the loop.
-        # That is, the top seprator, and index[0].
-        f.write(
-            f"tput cup {cnf['separator_height'] + len(lst_zip) + 4} {table_width}\n"
-        )
-        f.write(f"echo '{ntraces}'\n")
-        f.write(f"tput cup {cnf['space_under_separator']} {table_width}\n")
+        rng_values_lst = range(len(values))
+        rng_lst = [int(r) for r in rng_values_lst]
+        for r in rng_lst:
+            n_id_len0 = int(hi_ln_nms - len(values[r][0][0]))
+            v_id_len0 = int(hi_ln_val - len(values[r][0][1]))
+            space_id_n0 = "".join(" " * n_id_len0)
+            space_id_v0 = "".join(" " * v_id_len0)
+            n_site_len0 = int(hi_ln_nms - len(values[r][1][0]))
+            v_site_len0 = int(hi_ln_val - len(values[r][1][1]))
+            space_site_n0 = "".join(" " * n_site_len0)
+            space_site_v0 = "".join(" " * v_site_len0)
+            n_username_len0 = int(hi_ln_nms - len(values[r][2][0]))
+            v_username_len0 = int(hi_ln_val - len(values[r][2][1]))
+            space_username_n0 = "".join(" " * n_username_len0)
+            space_username_v0 = "".join(" " * v_username_len0)
+            n_pwd_len0 = int(hi_ln_nms - len(values[r][3][0]))
+            v_pwd_len0 = int(hi_ln_val - len(values[r][3][1]))
+            space_pwd_n0 = "".join(" " * n_pwd_len0)
+            space_pwd_v0 = "".join(" " * v_pwd_len0)
+            n_comment_len0 = int(hi_ln_nms - len(values[r][4][0]))
+            v_comment_len0 = int(hi_ln_val - len(values[r][4][1]))
+            space_comment_n0 = "".join(" " * n_comment_len0)
+            space_comment_v0 = "".join(" " * v_comment_len0)
+            n_time_len0 = int(hi_ln_nms - len(values[r][5][0]))
+            v_time_len0 = int(hi_ln_val - len(values[r][5][1]))
+            space_time_n0 = "".join(" " * n_time_len0)
+            space_time_v0 = "".join(" " * v_time_len0)
+
+            if r == 0:
+                f.write(f"tput cup {cnf['separator_height'] + 3} {table_width}\n")
+                f.write(f"echo '{ntraces}'\n")
+                f.write(f"tput cup {first_item_height} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][0][0]}{space_id_n0} | {values[r][0][1]}{space_id_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 1} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][1][0]}{space_site_n0} | {values[r][1][1]}{space_site_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 2} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][2][0]}{space_username_n0} | {values[r][2][1]}{space_username_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 3} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][3][0]}{space_pwd_n0} | {values[r][3][1]}{space_pwd_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 4} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][4][0]}{space_comment_n0} | {values[r][4][1]}{space_comment_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 5} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][5][0]}{space_time_n0} | {values[r][5][1]}{space_time_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 6} {table_width}\n")
+                f.write(f"echo '{ntraces}'\n")
+                f.write(f"tput cup {first_item_height + 7} {table_width}\n")
+                f.write("echo ' '\n")
+            else:
+                f.write(pp(f"tput cup {first_item_height + 9 * r + 1} {table_width}\n"))
+                f.write(f"echo '{ntraces}'\n")
+                f.write(f"tput cup {first_item_height + 9 * r + 2} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][0][0]}{space_id_n0} | {values[r][0][1]}{space_id_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 9 * r + 3} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][1][0]}{space_site_n0} | {values[r][1][1]}{space_site_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 9 * r + 4} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][2][0]}{space_username_n0} | {values[r][2][1]}{space_username_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 9 * r + 5} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][3][0]}{space_pwd_n0} | {values[r][3][1]}{space_pwd_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 9 * r + 6} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][4][0]}{space_comment_n0} | {values[r][4][1]}{space_comment_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 9 * r + 7} {table_width}\n")
+                f.write(
+                    f"echo '| {values[r][5][0]}{space_time_n0} | {values[r][5][1]}{space_time_v0} |'\n"
+                )
+                f.write(f"tput cup {first_item_height + 9 * r + 8} {table_width}\n")
+                f.write(f"echo '{ntraces}'\n")
+                f.write(f"tput cup {first_item_height + 9 * r + 9} {table_width}\n")
+                f.write("echo ' '\n")
+
+        f.write(f"tput cup {9 * len(rng_lst) + 12} {table_width}\n")
         f.write("read -p 'Press any key to exit. ' choice\n")
         f.write('echo "${choice}" > /dev/null\n')
         f.write("tput clear\n")
