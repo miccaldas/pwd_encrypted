@@ -26,6 +26,7 @@ def type_watch(source, value):
 snoop.install(watch_extras=[type_watch])
 
 
+@snoop
 def del_question():
     """
     Generates a Tput window with a prompt to insert the id to delete.
@@ -34,9 +35,7 @@ def del_question():
     cnf = tput_config()
 
     title_str = "WHO WILL WE OBLITERATE TODAY?"
-    title_width = int(
-        cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{title_str}") / 2)
-    )
+    title_width = int(cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{title_str}") / 2))
 
     with open("delete.bash", "w") as f:
         f.write("#!/usr/bin/env bash\n\n")
@@ -63,6 +62,7 @@ def del_question():
     subprocess.run("./delete.bash", cwd=os.getcwd(), shell=True)
 
 
+@snoop
 def db_call():
     """
     Makes the db call to delete an entry.
@@ -80,9 +80,7 @@ def db_call():
             split_lst = answers.split("-")
         else:
             split_lst = ident.split("-")
-        query = (
-            f"DELETE FROMW pwd WHERE pwdid BETWEEN {split_lst[0]} AND {split_lst[1]}"
-        )
+        query = f"DELETE FROMW pwd WHERE pwdid BETWEEN {split_lst[0]} AND {split_lst[1]}"
     if "," not in ident and "-" not in ident:
         query = f"DELETE FROM pwd WHERE pwdid = '{ident}'"
 
@@ -102,6 +100,7 @@ def db_call():
             conn.close()
 
 
+@snoop
 def feedback_page():
     """
     Shows Tput page with a confirmation message.
@@ -114,9 +113,7 @@ def feedback_page():
 
     title_str = "WHAT HAVE YOU DONE!!"
     conf_str = f"The database entry with the {ident} id was deleted."
-    title_width = int(
-        cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{title_str}") / 2)
-    )
+    title_width = int(cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{title_str}") / 2))
 
     with open("del_confirmation.bash", "w") as f:
         f.write("#!/usr/bin/env bash\n\n")

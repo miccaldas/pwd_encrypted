@@ -12,7 +12,7 @@ from add import call_add
 from clean import clean
 from configs.config import tput_config
 from delete import call_del
-from search import call_srch
+from search import srch_question
 from see import call_see
 from update import call_update
 
@@ -33,9 +33,7 @@ def main_choice():
     cnf = tput_config()
 
     title_str = "WHAT TO DO; WHAT TO DO..."
-    title_width = int(
-        cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{title_str}") / 2)
-    )
+    title_width = int(cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{title_str}") / 2))
     add_str = "[1] Add an entry."
     srch_str = "[2] Search for an entry."
     updt_str = "[3] Update an entry."
@@ -98,7 +96,7 @@ def main():
         call_add()
         clean()
     if main == "2":
-        call_srch()
+        srch_question()
         clean()
     if main == "3":
         call_update()

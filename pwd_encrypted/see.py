@@ -147,7 +147,7 @@ def see_answer():
         )
     # The next loop will ascertain from each of the last two lists, which element has the
     # bigger length. That way we know that the table cell of the respective line, will
-    # have to have at, least, the width of its longer element.
+    # have to have at, least, the length of its longer element.
     hi_ln_val = max(lens_val)
     hi_ln_nms = max(lens_nms)
     # This variable measures how big a line would be, if it was composed by the lengthiest
@@ -258,7 +258,7 @@ def see_answer():
                 # Here are all entries after the first one. We have 6 columns plus an empty line that were used after
                 # the 'first_item_height', that corresponds to line 15. We add these values and multiply it by the
                 # current loop value. This way the second entry will be printed at line (15 + 7) * 1. For each column
-                # we add 1, so as to keep them under each other. The third entry will be place at (15 + 7) * 2, and so
+                # we add 1, so as to keep them under each other. The third entry will be placed at (15 + 7) * 2, and so
                 # on and so forth.
                 f.write(pp(f"tput cup {first_item_height + 7 * r + 1} {table_width}\n"))
                 f.write(f"echo '{ntraces}'\n")
