@@ -1,22 +1,11 @@
 """
-Module to house the delete function of the app.
-There are three functions in this module:
-    1. Creation of the question window. Where
-       we ask for the pwdid's values to delete.
-    2. Database call. It'll delete entries.
-    3. Creation of confirmation window. Assserts
-       that the entry was deleted.
-It's called by 'main'.
+Cli accessed delete methods for pwd.
 """
-
-import os
 import sqlite3
-import subprocess
 
+import click
 import snoop
 from snoop import pp
-
-from configs.config import tput_config
 
 
 def type_watch(source, value):
@@ -26,130 +15,61 @@ def type_watch(source, value):
 snoop.install(watch_extras=[type_watch])
 
 
-@snoop
-def del_question():
+# @snoop
+def db_call(dlt):
     """
-    Generates a Tput window with a prompt to insert the id to delete.
+    Makes the db call to delete one or more entries.
     """
-
-    cnf = tput_config()
-
-    title_str = "WHO WILL WE OBLITERATE TODAY?"
-    title_width = int(cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{title_str}") / 2))
-
-    with open("delete.bash", "w") as f:
-        f.write("#!/usr/bin/env bash\n\n")
-        f.write("tput clear\n\n")
-        f.write(f"tput cup {cnf['init_height']} ")
-        f.write(f"{title_width}\n")
-        f.write(f"tput setaf {cnf['title_color']}\n")
-        f.write("tput bold\n")
-        f.write(f'echo "{title_str}"\n')
-        f.write("tput sgr0\n\n")
-
-        f.write(f"tput cup {cnf['separator_height']} {cnf['init_width']}\n")
-        f.write(f"echo '{cnf['separator']}'\n")
-
-        f.write(f"tput cup {cnf['separator_height'] + 3} {cnf['init_width']}\n")
-        f.write('read -p "[>>»]: " choice\n')
-        f.write('echo "${choice}" > delete.txt\n')
-
-        f.write("tput clear\n")
-        f.write("tput sgr0\n")
-        f.write("tput rc")
-
-    subprocess.run("sudo chmod +x delete.bash", cwd=os.getcwd(), shell=True)
-    subprocess.run("./delete.bash", cwd=os.getcwd(), shell=True)
-
-
-@snoop
-def db_call():
-    """
-    Makes the db call to delete an entry.
-    """
-    with open("delete.txt", "r") as f:
-        dirty_srch = f.read()
-        ident = dirty_srch.strip()
-
     split_lst = []
-    if "," in ident:
-        query = f"DELETE FROM pwd WWHERE pwdid IN ({ident})"
-    if "-" in ident:
-        if " - " in ident:
-            answers = ident.replace(" ", "")
+    if "," in dlt:
+        lst = dlt.split(",")
+        # Splitting creates spaces. Delete them.
+        nlst = [i.strip() for i in lst]
+        # Present tuple.
+        nt = tuple(nlst)
+        query = f"DELETE FROM pwd WWHERE pwdid IN ({nt})"
+    if "-" in dlt:
+        if " - " in dlt:
+            answers = dlt.replace(" ", "")
             split_lst = answers.split("-")
         else:
-            split_lst = ident.split("-")
-        query = f"DELETE FROMW pwd WHERE pwdid BETWEEN {split_lst[0]} AND {split_lst[1]}"
-    if "," not in ident and "-" not in ident:
-        query = f"DELETE FROM pwd WHERE pwdid = '{ident}'"
+            split_lst = dlt.split("-")
+        query = f"DELETE FROM pwd WHERE pwdid BETWEEN {split_lst[0]} AND {split_lst[1]}"
+    if "," not in dlt and "-" not in dlt:
+        query = f"DELETE FROM pwd WHERE pwdid = '{dlt}'"
 
     try:
         sqlite3.enable_callback_tracebacks(True)
-        conn = sqlite3.connect("pwd.db")
+        conn = sqlite3.connect("/home/mic/python/pwd_encrypted/pwd_encrypted/pwd.db")
         cur = conn.cursor()
         cur.execute(query)
         conn.commit()
+        # It's here because it was creating 'unboundlocalerror' in the 'finally' clause.
+        conn.close()
     except sqlite3.Error as e:
-        err_msg = "Error connecting to the db", e
         print("Error connecting to the db", e)
-        if err_msg:
-            return query, err_msg
-    finally:
-        if conn:
-            conn.close()
 
 
-@snoop
-def feedback_page():
+@click.command()
+@click.argument("dlt")
+# @snoop
+def call_del(dlt):
     """
-    Shows Tput page with a confirmation message.
+    Collects search query, calls the previous functions.
+    Function that deletes one, several or
+    range of entries in the 'pwd' database.\n
+    You can call it with 'pwddlt', and use it in the following form:\n
+    1. Delete non sequential entries. Surround the ids with quotation
+       marks and separate them with a comma:\n
+       pwddlt '435,436', for example.\n
+    2. Delete sequential entries. Envelop first and last ids with quotation
+       marks and separate them with a dash:\n
+       pwddlt '437-439'.\n
+       You may include spaces, but they'll be deleted by the application.\n
+    3. Delete single entry. Write the id:\n
+       pwddlt 66
     """
-    with open("delete.txt", "r") as f:
-        dirty_srch = f.read()
-        ident = dirty_srch.strip()
-
-    cnf = tput_config()
-
-    title_str = "WHAT HAVE YOU DONE!!"
-    conf_str = f"The database entry with the {ident} id was deleted."
-    title_width = int(cnf["init_width"] + (len(cnf["separator"]) / 2) - (len(f"{title_str}") / 2))
-
-    with open("del_confirmation.bash", "w") as f:
-        f.write("#!/usr/bin/env bash\n\n")
-        f.write("tput clear\n\n")
-        f.write(f"tput cup {cnf['init_height']} ")
-        f.write(f"{title_width}\n")
-        f.write(f"tput setaf {cnf['title_color']}\n")
-        f.write("tput bold\n")
-        f.write(f'echo "{title_str}"\n')
-        f.write("tput sgr0\n\n")
-
-        f.write(f"tput cup {cnf['separator_height']} {cnf['init_width']}\n")
-        f.write(f"echo '{cnf['separator']}'\n")
-
-        f.write(f"tput cup {cnf['separator_height'] + 3} {cnf['init_width']}\n")
-        f.write(f'echo "{conf_str}"\n')
-        f.write(f"tput cup {cnf['space_under_separator']} {cnf['init_width']}\n")
-        f.write("read -p 'Press any key to exit. ' choice\n")
-        f.write('echo "${choice}" > /dev/null\n')
-
-        f.write("tput clear\n")
-        f.write("tput sgr0\n")
-        f.write("tput rc")
-
-    subprocess.run("sudo chmod +x del_confirmation.bash", cwd=os.getcwd(), shell=True)
-    subprocess.run("./del_confirmation.bash", cwd=os.getcwd(), shell=True)
-
-
-def call_del():
-    """
-    Calls the previous functions.
-    It's called by 'main'.
-    """
-    del_question()
-    db_call()
-    feedback_page()
+    db_call(dlt)
 
 
 if __name__ == "__main__":

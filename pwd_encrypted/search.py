@@ -9,7 +9,6 @@ There are three functions in this module:
 import os
 import pickle
 import sqlite3
-import sys
 
 import click
 import snoop
@@ -32,7 +31,7 @@ snoop.install(watch_extras=[type_watch])
 load_dotenv()
 
 
-# @snoop
+@snoop
 def db_call(search):
     """
     Using the inofrmation sent from 'srch_question' function,
@@ -57,52 +56,49 @@ def db_call(search):
     if pwd_lst == []:
         # Mounts the filesystem.
         fs.mount()
-    # In principle we already opened the filesystem in the
-    # beginning of the module, but you never know.
-    if len(pwd_lst) > 0:
-        # Location of the database's encryption key.
-        enc_key = os.getenv("PWD_KEY_LOC")
+    # Location of the database's encryption key.
+    enc_key = os.getenv("PWD_KEY_LOC")
 
-        with open(f"{enc_key}", "rb") as g:
-            sym_key = pickle.load(g)
-            cell = SCellSeal(key=sym_key)
+    with open(f"{enc_key}", "rb") as g:
+        sym_key = pickle.load(g)
+        cell = SCellSeal(key=sym_key)
 
-        query = f"SELECT * FROM pwd_fts WHERE pwd_fts MATCH '{search}'"
-        try:
-            conn = sqlite3.connect("pwd.db")
-            cur = conn.cursor()
-            cur.execute(
-                query,
-            )
-            records = cur.fetchall()
-        except sqlite3.Error as e:
-            print("Error while connecting to db", e)
-        finally:
-            if conn:
-                conn.close()
+    query = f"SELECT * FROM pwd_fts WHERE pwd_fts MATCH '{search}'"
+    try:
+        conn = sqlite3.connect("pwd.db")
+        cur = conn.cursor()
+        cur.execute(
+            query,
+        )
+        records = cur.fetchall()
+    except sqlite3.Error as e:
+        print("Error while connecting to db", e)
+    finally:
+        if conn:
+            conn.close()
 
-        if records == []:
-            print("There's no entry in the database with that name.")
-            sys.exit()
+    if records == []:
+        print("There's no entry in the database with that name.")
+        raise SystemExit
 
-        pwd_bytes = []
-        try:
-            for tup in records:
-                dec = cell.decrypt(tup[3], tup[6])
-                # As it's not needed anymore, we don't collect the 'context' item from the list.
-                pwd_bytes.append((tup[0], tup[1], tup[2], dec, tup[4], tup[5]))
-        except ThemisError as e:
-            print(e)
-        # We convert the password value from bytes to strings.
-        pwd_strs = [(a, b, c, d.decode("latin-1"), e, f) for a, b, c, d, e, f in pwd_bytes]
+    pwd_bytes = []
+    try:
+        for tup in records:
+            dec = cell.decrypt(tup[3], tup[6])
+            # As it's not needed anymore, we don't collect the 'context' item from the list.
+            pwd_bytes.append((tup[0], tup[1], tup[2], dec, tup[4], tup[5]))
+    except ThemisError as e:
+        print(e)
+    # We convert the password value from bytes to strings.
+    pwd_strs = [(a, b, c, d.decode("latin-1"), e, f) for a, b, c, d, e, f in pwd_bytes]
 
-        with open("srch_db_call.bin", "wb") as g:
-            pickle.dump(pwd_strs, g)
+    with open("srch_db_call.bin", "wb") as g:
+        pickle.dump(pwd_strs, g)
 
-        return query
+    return query
 
 
-# @snoop
+@snoop
 def srch_answer(query):
     """
     Generates a Rich table with the db's search results.
@@ -138,7 +134,7 @@ def srch_answer(query):
 
 @click.command()
 @click.argument("qry")
-# @snoop
+@snoop
 def srch_question(qry):
     """
     Gets search query through command line and calls the other functions.\n
