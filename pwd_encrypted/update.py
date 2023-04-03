@@ -82,6 +82,7 @@ def db_call(answers):
 def call_update(pwdid, column, update):
     """
     Invoked as 'pwdupdt', calls the previous functions.\n
+    **Options:**\n
     -i   Id integer of the line to update.\n
     -c   Name of column to update.\n
     -u   Update text.

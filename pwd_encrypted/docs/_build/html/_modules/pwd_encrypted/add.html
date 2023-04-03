@@ -1,0 +1,315 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pwd_encrypted.add &#8212; Passwords 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for pwd_encrypted.add</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module inserts a new password in the database.</span>
+<span class="sd">It collects user input through a cli, checks if the</span>
+<span class="sd">site to upload is already in the database, creates</span>
+<span class="sd">and/or encrypts a password. Uploads it to the db.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">sqlite3</span>
+<span class="kn">from</span> <span class="nn">string</span> <span class="kn">import</span> <span class="n">punctuation</span>
+
+<span class="kn">import</span> <span class="nn">click</span>
+<span class="kn">import</span> <span class="nn">snoop</span>
+<span class="kn">from</span> <span class="nn">Cryptodome.Random.random</span> <span class="kn">import</span> <span class="n">randrange</span>
+<span class="kn">from</span> <span class="nn">dotenv</span> <span class="kn">import</span> <span class="n">load_dotenv</span>
+<span class="kn">from</span> <span class="nn">english_words</span> <span class="kn">import</span> <span class="n">get_english_words_set</span>
+<span class="kn">from</span> <span class="nn">pythemis.exception</span> <span class="kn">import</span> <span class="n">ThemisError</span>
+<span class="kn">from</span> <span class="nn">pythemis.scell</span> <span class="kn">import</span> <span class="n">SCellSeal</span><span class="p">,</span> <span class="n">SecureCellError</span>
+<span class="kn">from</span> <span class="nn">rich.console</span> <span class="kn">import</span> <span class="n">Console</span>
+<span class="kn">from</span> <span class="nn">rich.prompt</span> <span class="kn">import</span> <span class="n">Confirm</span>
+<span class="kn">from</span> <span class="nn">rich.table</span> <span class="kn">import</span> <span class="n">Table</span>
+<span class="kn">from</span> <span class="nn">snoop</span> <span class="kn">import</span> <span class="n">pp</span>
+
+<span class="kn">from</span> <span class="nn">pwd_encrypted.configs.config</span> <span class="kn">import</span> <span class="n">Efs</span>
+
+
+<span class="k">def</span> <span class="nf">type_watch</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;type(</span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">source</span><span class="p">),</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="n">snoop</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">watch_extras</span><span class="o">=</span><span class="p">[</span><span class="n">type_watch</span><span class="p">])</span>
+
+<span class="n">load_dotenv</span><span class="p">()</span>
+<span class="n">pwdfldr</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PWD_LOC&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># @snoop</span>
+<div class="viewcode-block" id="check_repeats"><a class="viewcode-back" href="../../all_commands.html#pwd_encrypted.add.check_repeats">[docs]</a><span class="k">def</span> <span class="nf">check_repeats</span><span class="p">(</span><span class="n">site</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    We check with the database to see if there&#39;s already an entry with</span>
+<span class="sd">    the same site&#39;s name. If there are, we present the information to</span>
+<span class="sd">    the user and ask him if he wants to continue inputing the entry or</span>
+<span class="sd">    if he wants to abort. In the first case we do nothing and the</span>
+<span class="sd">    program continues, in the other, we exit the program.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;SELECT * FROM pwd_fts WHERE pwd_fts MATCH &#39;</span><span class="si">{</span><span class="n">site</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+
+    <span class="n">sqlite3</span><span class="o">.</span><span class="n">enable_callback_tracebacks</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;pwd.db&quot;</span><span class="p">)</span>
+    <span class="n">cur</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">records</span><span class="p">:</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="p">[(</span><span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">records</span><span class="p">]</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ID&quot;</span><span class="p">,</span> <span class="s2">&quot;SITE&quot;</span><span class="p">,</span> <span class="s2">&quot;USERNAME&quot;</span><span class="p">,</span> <span class="s2">&quot;COMMENT&quot;</span><span class="p">,</span> <span class="s2">&quot;TIME&quot;</span><span class="p">]</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">highlight</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">border_style</span><span class="o">=</span><span class="s2">&quot;#898121&quot;</span><span class="p">)</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">:</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">4</span><span class="p">]])</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="n">table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">justify</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+            <span class="n">table</span><span class="o">.</span><span class="n">add_row</span><span class="p">(</span><span class="o">*</span><span class="n">row</span><span class="p">)</span>
+        <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold]The site &#39;</span><span class="si">{</span><span class="n">site</span><span class="si">}</span><span class="s2">&#39; that you requested is similar to this entry:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">justify</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">justify</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">)</span>
+        <span class="n">gonogo</span> <span class="o">=</span> <span class="n">Confirm</span><span class="o">.</span><span class="n">ask</span><span class="p">(</span><span class="s2">&quot;                                                      [bold]Do you want to upload it anyway?&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gonogo</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span></div>
+
+
+<div class="viewcode-block" id="create_encrypt_pwd"><a class="viewcode-back" href="../../all_commands.html#pwd_encrypted.add.create_encrypt_pwd">[docs]</a><span class="nd">@snoop</span>
+<span class="k">def</span> <span class="nf">create_encrypt_pwd</span><span class="p">(</span><span class="n">pwdinput</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Collects all information from &#39;answr.bin&#39;.</span>
+<span class="sd">    Generates password and context value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># These are location variables, defined in &#39;.env&#39;.</span>
+    <span class="n">enc_key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PWD_KEY_LOC&quot;</span><span class="p">)</span>
+    <span class="n">res_pth</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PWD_SEC_LOC&quot;</span><span class="p">)</span>
+    <span class="n">themis_key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PWD_KEY_LOC&quot;</span><span class="p">)</span>
+    <span class="c1"># Declaring the class, kept in &#39;configs/config.py&#39;,</span>
+    <span class="c1"># that controls the behaviour of Encfs, the</span>
+    <span class="c1"># encrypted virtual  filesystem used to encrypt the</span>
+    <span class="c1"># folder with the databases&#39; more sensitive information.</span>
+    <span class="n">fs</span> <span class="o">=</span> <span class="n">Efs</span><span class="p">()</span>
+    <span class="c1"># &#39;res_path&#39; is the path to the &#39;pwd&#39; folder. If it&#39;s not</span>
+    <span class="c1"># mounted, it&#39;ll appear empty.</span>
+    <span class="n">pwd_lst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">res_pth</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pwd_lst</span> <span class="o">==</span> <span class="p">[]:</span>
+        <span class="c1"># Mounts the filesystem.</span>
+        <span class="n">fs</span><span class="o">.</span><span class="n">mount</span><span class="p">()</span>
+
+    <span class="c1"># &#39;passwd&#39; is the variable name that later on will be used to encrypt a new password.</span>
+    <span class="c1"># So as to use the same password generating code, regardless if I chose my own pwd or</span>
+    <span class="c1"># not, we&#39;ll arbitrarily decide that &#39;pwdinput&#39; is a password, and the code we&#39;ll run</span>
+    <span class="c1"># based on this assumption. This never becomes a problem because we immediately check</span>
+    <span class="c1"># if &#39;pwdinput&#39; is indeed a password or not, by checking if it is an integer. If false,</span>
+    <span class="c1"># nothing changes and we go to the encryption portion of code. If true, we&#39;ll create it</span>
+    <span class="c1"># now. This default choice saves us from two if statements almost alike.</span>
+    <span class="n">passwd</span> <span class="o">=</span> <span class="n">pwdinput</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">passwd</span><span class="p">)</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="n">passwd</span>
+        <span class="c1"># This moment starts the building of the password.</span>
+        <span class="c1"># Gets the word list.</span>
+        <span class="n">word_lst</span> <span class="o">=</span> <span class="n">get_english_words_set</span><span class="p">([</span><span class="s2">&quot;gcide&quot;</span><span class="p">])</span>
+        <span class="n">wordlst</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">word_lst</span><span class="p">)</span>
+        <span class="c1"># Gets the punctuation list.</span>
+        <span class="n">punt</span> <span class="o">=</span> <span class="n">punctuation</span>
+        <span class="c1"># Bash has a really bad time with quotation marks. Python don&#39;t</span>
+        <span class="c1"># love them neither. To make our life easier, we just exclude</span>
+        <span class="c1"># them from the passwords.</span>
+        <span class="n">pun</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">punt</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="s2">&quot;&#39;&quot;</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">!=</span> <span class="s1">&#39;&quot;&#39;</span><span class="p">]</span>
+        <span class="c1"># &#39;k&#39; is the password length chosen by the user.</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span><span class="n">wordlst</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">length</span><span class="p">)</span>
+        <span class="n">punct</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span><span class="n">pun</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">sam</span> <span class="o">=</span> <span class="n">words</span> <span class="o">+</span> <span class="n">punct</span>
+        <span class="c1"># In &#39;sam&#39; the words and punctuation are in order.</span>
+        <span class="c1"># We want it mixed together.</span>
+        <span class="n">samp</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sam</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">length</span> <span class="o">+</span> <span class="p">(</span><span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="c1"># Turns it from a list to a string.</span>
+        <span class="n">samp_str</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">samp</span><span class="p">)</span>
+        <span class="c1"># We get rid of the spaces, because a lot of sites</span>
+        <span class="c1"># don&#39;t accept passwords with spaces.</span>
+        <span class="n">passwd</span> <span class="o">=</span> <span class="n">samp_str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">enc_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">b</span><span class="p">:</span>
+        <span class="n">sym_key</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+    <span class="n">cell</span> <span class="o">=</span> <span class="n">SCellSeal</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">sym_key</span><span class="p">)</span>
+    <span class="c1"># Turns string to bytes()</span>
+    <span class="n">bpasswd</span> <span class="o">=</span> <span class="n">passwd</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;latin-1&quot;</span><span class="p">)</span>
+    <span class="c1"># &#39;randrange&#39; chooses a number between 100 and 1000.</span>
+    <span class="n">cont</span> <span class="o">=</span> <span class="n">randrange</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+    <span class="c1"># Convert resulting integer of last operation, to a bytes type object.</span>
+    <span class="n">con</span> <span class="o">=</span> <span class="n">cont</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;little&quot;</span><span class="p">)</span>
+    <span class="c1"># We encrypt it with Themis.</span>
+    <span class="n">encrypted</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">bpasswd</span><span class="p">,</span> <span class="n">con</span><span class="p">)</span>
+    <span class="n">pwcon</span> <span class="o">=</span> <span class="p">[</span><span class="n">encrypted</span><span class="p">,</span> <span class="n">con</span><span class="p">]</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pwdfldr</span><span class="si">}</span><span class="s2">/pwd_con.bin&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">pwcon</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="db_call"><a class="viewcode-back" href="../../all_commands.html#pwd_encrypted.add.db_call">[docs]</a><span class="nd">@snoop</span>
+<span class="k">def</span> <span class="nf">db_call</span><span class="p">(</span><span class="n">answers</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    inserts the new entry in the database.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="s2">&quot;INSERT INTO pwd (site, username, pwd, comment, context) VALUES (?1, ?2, ?3, ?4, ?5)&quot;</span>
+        <span class="n">sqlite3</span><span class="o">.</span><span class="n">enable_callback_tracebacks</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;pwd.db&quot;</span><span class="p">)</span>
+        <span class="n">cur</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">answers</span><span class="p">)</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">err_msg</span> <span class="o">=</span> <span class="s2">&quot;Error connecting to db&quot;</span><span class="p">,</span> <span class="n">e</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error connecting to db&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">err_msg</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">query</span><span class="p">,</span> <span class="n">err_msg</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">conn</span><span class="p">:</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;-s&quot;</span><span class="p">,</span> <span class="s2">&quot;--site&quot;</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;-u&quot;</span><span class="p">,</span> <span class="s2">&quot;--user&quot;</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;-p&quot;</span><span class="p">,</span> <span class="s2">&quot;--password&quot;</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;-l&quot;</span><span class="p">,</span> <span class="s2">&quot;--length&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;-c&quot;</span><span class="p">,</span> <span class="s2">&quot;--commentary&quot;</span><span class="p">,</span> <span class="n">prompt</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># @snoop</span>
+<span class="k">def</span> <span class="nf">call_add</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">commentary</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gathers all information through command line.</span>
+<span class="sd">    Calls all other functions.</span>
+<span class="sd">    Cli functionality can be accessed by calling **pwdadd**.\n</span>
+<span class="sd">    Options:\n</span>
+<span class="sd">    -s   Site name.\n</span>
+<span class="sd">    -u   Username.\n</span>
+<span class="sd">    -p   Password, if you don&#39;t want it to create one fror you.\n</span>
+<span class="sd">    -l   Length, number of words used to create your password. Keep it low or the encrypted values will be ridiculously long.\n</span>
+<span class="sd">    -c   Commentary. What is the site about, and shit like that.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">check_repeats</span><span class="p">(</span><span class="n">site</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">password</span><span class="p">:</span>
+        <span class="n">create_encrypt_pwd</span><span class="p">(</span><span class="n">password</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">create_encrypt_pwd</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pwdfldr</span><span class="si">}</span><span class="s2">/pwd_con.bin&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">enc_values</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+    <span class="n">answers</span> <span class="o">=</span> <span class="p">[</span><span class="n">site</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">commentary</span><span class="p">]</span>
+    <span class="n">answers</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">enc_values</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">answers</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">enc_values</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">db_call</span><span class="p">(</span><span class="n">answers</span><span class="p">)</span>
+
+    <span class="n">fs</span> <span class="o">=</span> <span class="n">Efs</span><span class="p">()</span>
+    <span class="n">fs</span><span class="o">.</span><span class="n">unmount</span><span class="p">()</span>
+
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pwdfldr</span><span class="si">}</span><span class="s2">/pwd_con.bin&quot;</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pwdfldr</span><span class="si">}</span><span class="s2">/answr.bin&quot;</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">call_add</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Passwords</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../all_commands.html">Commands</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, mclds.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 6.1.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

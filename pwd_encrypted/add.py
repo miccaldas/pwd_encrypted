@@ -183,7 +183,7 @@ def call_add(site, user, password, length, commentary):
     """
     Gathers all information through command line.
     Calls all other functions.
-    Cli functionality can be accessed by calling 'pwdadd'.\n
+    Cli functionality can be accessed by calling **pwdadd**.\n
     Options:\n
     -s   Site name.\n
     -u   Username.\n

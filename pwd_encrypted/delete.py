@@ -58,16 +58,21 @@ def call_del(dlt):
     Collects search query, calls the previous functions.
     Function that deletes one, several or
     range of entries in the 'pwd' database.\n
-    You can call it with 'pwddlt', and use it in the following form:\n
-    1. Delete non sequential entries. Surround the ids with quotation
-       marks and separate them with a comma:\n
-       pwddlt '435,436', for example.\n
-    2. Delete sequential entries. Envelop first and last ids with quotation
-       marks and separate them with a dash:\n
-       pwddlt '437-439'.\n
+    You can call it with **pwddlt**, and use it in the following form:\n
+    1. **Delete non sequential entries**. Surround the ids with quotation
+       marks and separate them with a comma::
+
+           pwddlt '435,436'
+
+    2. **Delete sequential entries**. Envelop first and last ids with quotation
+       marks and separate them with a dash::
+
+           pwddlt '437-439'
+
        You may include spaces, but they'll be deleted by the application.\n
-    3. Delete single entry. Write the id:\n
-       pwddlt 66
+    3. **Delete single entry**. Write the id::
+
+           pwddlt 66
     """
     db_call(dlt)
 

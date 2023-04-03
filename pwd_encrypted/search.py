@@ -1,10 +1,5 @@
 """
 Module to house the search function of the app.
-There are three functions in this module:
-    1. Query setter. Gets query value through cli and
-       calls next function:
-    2. Database call. Uses query to look for resuls in db.
-    3. Rich table. Generates a Rich table with results.
 """
 import os
 import pickle
@@ -138,7 +133,7 @@ def srch_answer(query):
 def srch_question(qry):
     """
     Gets search query through command line and calls the other functions.\n
-    Accepts one string argument, the query, and its called with 'pwdsrch'.
+    Accepts one string argument, the query, and its called with **pwdsrch**.
     """
     db_call(qry)
     srch_answer(qry)

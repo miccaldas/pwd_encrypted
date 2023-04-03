@@ -117,7 +117,7 @@ def see_answer():
 # @snoop
 def call_see():
     """
-    Invoked as 'pwdall', calls the previous functions to show the whole of the db.
+    Invoked as **pwdall**, calls the previous functions to show the whole of the db.
     """
     db_call()
     see_answer()
