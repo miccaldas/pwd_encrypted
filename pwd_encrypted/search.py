@@ -6,27 +6,29 @@ import pickle
 import sqlite3
 
 import click
-import snoop
+
+# import snoop
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
 from rich.console import Console
 from rich.table import Table
-from snoop import pp
+
+# from snoop import pp
 
 from pwd_encrypted.configs.config import Efs
 
 
-def type_watch(source, value):
-    return "type({})".format(source), type(value)
+# def type_watch(source, value):
+#     return "type({})".format(source), type(value)
 
 
-snoop.install(watch_extras=[type_watch])
+# snoop.install(watch_extras=[type_watch])
 
 load_dotenv()
 
 
-@snoop
+# @snoop
 def db_call(search):
     """
     Using the inofrmation sent from 'srch_question' function,
@@ -60,7 +62,7 @@ def db_call(search):
 
     query = f"SELECT * FROM pwd_fts WHERE pwd_fts MATCH '{search}'"
     try:
-        conn = sqlite3.connect("pwd.db")
+        conn = sqlite3.connect("/home/mic/python/pwd_encrypted/pwd_encrypted/pwd.db")
         cur = conn.cursor()
         cur.execute(
             query,
@@ -93,7 +95,7 @@ def db_call(search):
     return query
 
 
-@snoop
+# @snoop
 def srch_answer(query):
     """
     Generates a Rich table with the db's search results.
@@ -112,10 +114,7 @@ def srch_answer(query):
     columns = ["ID", "SITE", "USERNAME", "PASSWORD", "COMMENT", "TIME"]
 
     table = Table(title=f"{query}", highlight=True, border_style="#898121")
-    rows = []
-    for v in vals:
-        rows.append([v[0], v[1], v[2], v[3], v[4], v[5]])
-
+    rows = [[v[0], v[1], v[2], v[3], v[4], v[5]] for v in vals]
     for column in columns:
         table.add_column(column, justify="center")
     for row in rows:
@@ -129,7 +128,7 @@ def srch_answer(query):
 
 @click.command()
 @click.argument("qry")
-@snoop
+# @snoop
 def srch_question(qry):
     """
     Gets search query through command line and calls the other functions.\n

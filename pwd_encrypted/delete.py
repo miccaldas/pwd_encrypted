@@ -4,19 +4,20 @@ Cli accessed delete methods for pwd.
 import sqlite3
 
 import click
-import snoop
-from snoop import pp
+
+# import snoop
+# from snoop import pp
 
 
-def type_watch(source, value):
-    return "type({})".format(source), type(value)
+# def type_watch(source, value):
+#     return "type({})".format(source), type(value)
 
 
-snoop.install(watch_extras=[type_watch])
+# snoop.install(watch_extras=[type_watch])
 
 
 # @snoop
-def db_call(dlt):
+def db_call(dlt):  # sourcery skip: extract-method
     """
     Makes the db call to delete one or more entries.
     """

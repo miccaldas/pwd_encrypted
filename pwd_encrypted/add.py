@@ -26,7 +26,7 @@ from pwd_encrypted.configs.config import Efs
 
 
 def type_watch(source, value):
-    return "type({})".format(source), type(value)
+    return f"type({source})", type(value)
 
 
 snoop.install(watch_extras=[type_watch])
@@ -35,7 +35,7 @@ load_dotenv()
 pwdfldr = os.getenv("PWD_LOC")
 
 
-# @snoop
+@snoop
 def check_repeats(site):
     """
     We check with the database to see if there's already an entry with
@@ -44,36 +44,33 @@ def check_repeats(site):
     if he wants to abort. In the first case we do nothing and the
     program continues, in the other, we exit the program.
     """
-    query = f"SELECT * FROM pwd_fts WHERE pwd_fts MATCH '{site}'"
-
+    # For some reason, Sqlite3 connector is getting the context column when I write comment and
+    # vice-versa. Until I foind out why, in the query it's written context, meaning comment.
+    query = f"SELECT pwdid, site, username, context, time FROM pwd_fts WHERE pwd_fts MATCH '{site}'"
     sqlite3.enable_callback_tracebacks(True)
-    conn = sqlite3.connect("pwd.db")
+    conn = sqlite3.connect("/home/mic/python/pwd_encrypted/pwd_encrypted/pwd.db")
     cur = conn.cursor()
     cur.execute(query)
     records = cur.fetchall()
-    if records:
-        vals = [(str(a), b, c, e, f) for a, b, c, d, e, f, g in records]
-        columns = ["ID", "SITE", "USERNAME", "COMMENT", "TIME"]
-        table = Table(highlight=True, border_style="#898121")
-        rows = []
-        for v in vals:
-            rows.append([v[0], v[1], v[2], v[3], v[4]])
-        for column in columns:
-            table.add_column(column, justify="center")
-        for row in rows:
-            table.add_row(*row)
-        console = Console()
-        console.print("\n")
-        console.print(
-            f"[bold]The site '{site}' that you requested is similar to this entry:\n",
-            justify="center",
-        )
-        console.print(table, justify="center")
-        gonogo = Confirm.ask("                                                      [bold]Do you want to upload it anyway?")
-        if gonogo:
-            pass
-        else:
-            raise SystemExit
+    pp(records)
+    vals = [(str(a), b, c, d, e) for a, b, c, d, e in records]
+    columns = ["ID", "SITE", "USERNAME", "COMMENT", "TIME"]
+    table = Table(highlight=True, border_style="#898121")
+    rows = [[v[0], v[1], v[2], v[3], v[4]] for v in vals]
+    for column in columns:
+        table.add_column(column, justify="center")
+    for row in rows:
+        table.add_row(*row)
+    console = Console()
+    console.print("\n")
+    console.print(
+        f"[bold]The site '{site}' that you requested is similar to this entry:\n",
+        justify="center",
+    )
+    console.print(table, justify="center")
+    gonogo = Confirm.ask("                                                      [bold]Do you want to upload it anyway?")
+    if not gonogo:
+        raise SystemExit
 
 
 @snoop
@@ -118,7 +115,7 @@ def create_encrypt_pwd(pwdinput):
         # Bash has a really bad time with quotation marks. Python don't
         # love them neither. To make our life easier, we just exclude
         # them from the passwords.
-        pun = [i for i in punt if i != "'" and i != '"']
+        pun = [i for i in punt if i not in ["'", '"']]
         # 'k' is the password length chosen by the user.
         words = random.choices(wordlst, k=length)
         punct = random.choices(pun, k=int(length - 1))
@@ -158,7 +155,7 @@ def db_call(answers):
     try:
         query = "INSERT INTO pwd (site, username, pwd, comment, context) VALUES (?1, ?2, ?3, ?4, ?5)"
         sqlite3.enable_callback_tracebacks(True)
-        conn = sqlite3.connect("pwd.db")
+        conn = sqlite3.connect("/home/mic/python/pwd_encrypted/pwd_encrypted/pwd.db")
         cur = conn.cursor()
         cur.execute(query, answers)
         conn.commit()
@@ -178,7 +175,7 @@ def db_call(answers):
 @click.option("-p", "--password")
 @click.option("-l", "--length", type=int)
 @click.option("-c", "--commentary", prompt=True)
-# @snoop
+@snoop
 def call_add(site, user, password, length, commentary):
     """
     Gathers all information through command line.

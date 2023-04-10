@@ -6,26 +6,28 @@ import pickle
 import sqlite3
 
 import click
-import snoop
+
+# import snoop
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
-from snoop import pp
+
+# from snoop import pp
 
 from pwd_encrypted.configs.config import Efs
 
 
-def type_watch(source, value):
-    return "type({})".format(source), type(value)
+# def type_watch(source, value):
+#     return f"type({source})", type(value)
 
 
-snoop.install(watch_extras=[type_watch])
+# snoop.install(watch_extras=[type_watch])
 
 load_dotenv()
 
 
-@snoop
-def db_call(answers):
+# @snoop
+def query_definition(answers):
     """
     Using the inofrmation gathered from
     'call_updt', it'll call the database
@@ -47,38 +49,43 @@ def db_call(answers):
         sym_key = pickle.load(g)
         cell = SCellSeal(key=sym_key)
 
-    conn = sqlite3.connect("pwd.db")
+    conn = sqlite3.connect("/home/mic/python/pwd_encrypted/pwd_encrypted/pwd.db")
     cur = conn.cursor()
     if answers[0] == "pwd":
         try:
             bval = int(answers[2]).to_bytes(2, "little")
             btri = bytes(answers[1], "latin-1")
             encrypted = cell.encrypt(btri, bval)
-            query = f"UPDATE pwd SET answers[0] = '{answers[1]}' WHERE pwdid = {answers[2]}"
-            cur.execute(
-                query,
-            )
-            conn.commit()
-            conn.close()
+            query = f"UPDATE pwd SET {answers[0]} = '{answers[1]}' WHERE pwdid = {answers[2]}"
+            query_execution(cur, query, conn)
         except sqlite3.Error as e:
             print("Error while connecting to db", e)
     else:
         try:
             query = f"UPDATE pwd SET {answers[0]} = '{answers[1]}' WHERE pwdid = {answers[2]}"
-            cur.execute(
-                query,
-            )
-            conn.commit()
-            conn.close()
+            query_execution(cur, query, conn)
         except sqlite3.Error as e:
             print("Error while connecting to db ", e)
+
+
+# Suggested by Sourcery
+# @snoop
+def query_execution(cur, query, conn):
+    """
+    Centralizes the execution of the db call.
+    """
+    cur.execute(
+        query,
+    )
+    conn.commit()
+    conn.close()
 
 
 @click.command()
 @click.option("-i", "--pwdid", type=int)
 @click.option("-c", "--column")
 @click.option("-u", "--update")
-@snoop
+# @snoop
 def call_update(pwdid, column, update):
     """
     Invoked as 'pwdupdt', calls the previous functions.\n
@@ -88,7 +95,7 @@ def call_update(pwdid, column, update):
     -u   Update text.
     """
     answers = [column, update, pwdid]
-    db_call(answers)
+    query_definition(answers)
 
     fs = Efs()
     fs.unmount()
