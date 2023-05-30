@@ -25,7 +25,7 @@ from pwd_encrypted.configs.config import Efs
 
 # snoop.install(watch_extras=[type_watch])
 
-load_dotenv()
+# load_dotenv()
 
 
 # @snoop

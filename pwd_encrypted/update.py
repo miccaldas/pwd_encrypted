@@ -11,8 +11,7 @@ import click
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
-
-# from snoop import pp
+from snoop import pp
 
 from pwd_encrypted.configs.config import Efs
 
@@ -56,27 +55,27 @@ def query_definition(answers):
             bval = int(answers[2]).to_bytes(2, "little")
             btri = bytes(answers[1], "latin-1")
             encrypted = cell.encrypt(btri, bval)
-            query = f"UPDATE pwd SET {answers[0]} = '{answers[1]}' WHERE pwdid = {answers[2]}"
-            query_execution(cur, query, conn)
+            answers.insert(4, encrypted)
+            answers.insert(5, bval)
+            query = "UPDATE pwd SET pwd = ?4, context = ?5 WHERE pwdid = ?3"
+            query_execution(cur, query, answers, conn)
         except sqlite3.Error as e:
             print("Error while connecting to db", e)
     else:
         try:
-            query = f"UPDATE pwd SET {answers[0]} = '{answers[1]}' WHERE pwdid = {answers[2]}"
-            query_execution(cur, query, conn)
+            query = "UPDATE pwd SET ?1 = ?2 WHERE pwdid = ?3"
+            query_execution(cur, query, answers, conn)
         except sqlite3.Error as e:
             print("Error while connecting to db ", e)
 
 
 # Suggested by Sourcery
 # @snoop
-def query_execution(cur, query, conn):
+def query_execution(cur, query, answers, conn):
     """
     Centralizes the execution of the db call.
     """
-    cur.execute(
-        query,
-    )
+    cur.execute(query, answers)
     conn.commit()
     conn.close()
 

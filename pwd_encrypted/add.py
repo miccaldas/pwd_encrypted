@@ -46,31 +46,36 @@ def check_repeats(site):
     """
     # For some reason, Sqlite3 connector is getting the context column when I write comment and
     # vice-versa. Until I foind out why, in the query it's written context, meaning comment.
-    query = f"SELECT pwdid, site, username, context, time FROM pwd_fts WHERE pwd_fts MATCH '{site}'"
+
+    query = f"SELECT pwdid, site, username, comment, time FROM pwd_fts WHERE pwd_fts MATCH '\"{site}\"'"
+    # Query was not acceptting site names with a dot. To solve this we envelop search string with double quotes.
+    # Note that the double quotes are enclosed in single quotes to define the string,
+    # and the search string is enclosed in double quotes to escape the period.
     sqlite3.enable_callback_tracebacks(True)
     conn = sqlite3.connect("/home/mic/python/pwd_encrypted/pwd_encrypted/pwd.db")
     cur = conn.cursor()
     cur.execute(query)
     records = cur.fetchall()
     pp(records)
-    vals = [(str(a), b, c, d, e) for a, b, c, d, e in records]
-    columns = ["ID", "SITE", "USERNAME", "COMMENT", "TIME"]
-    table = Table(highlight=True, border_style="#898121")
-    rows = [[v[0], v[1], v[2], v[3], v[4]] for v in vals]
-    for column in columns:
-        table.add_column(column, justify="center")
-    for row in rows:
-        table.add_row(*row)
-    console = Console()
-    console.print("\n")
-    console.print(
-        f"[bold]The site '{site}' that you requested is similar to this entry:\n",
-        justify="center",
-    )
-    console.print(table, justify="center")
-    gonogo = Confirm.ask("                                                      [bold]Do you want to upload it anyway?")
-    if not gonogo:
-        raise SystemExit
+    if records != []:
+        vals = [(str(a), b, c, d, e) for a, b, c, d, e in records]
+        columns = ["ID", "SITE", "USERNAME", "COMMENT", "TIME"]
+        table = Table(highlight=True, border_style="#898121")
+        rows = [[v[0], v[1], v[2], v[3], v[4]] for v in vals]
+        for column in columns:
+            table.add_column(column, justify="center")
+        for row in rows:
+            table.add_row(*row)
+        console = Console()
+        console.print("\n")
+        console.print(
+            f"[bold]The site '{site}' that you requested is similar to this entry:\n",
+            justify="center",
+        )
+        console.print(table, justify="center")
+        gonogo = Confirm.ask("                                                      [bold]Do you want to upload it anyway?")
+        if not gonogo:
+            raise SystemExit
 
 
 @snoop
@@ -199,14 +204,13 @@ def call_add(site, user, password, length, commentary):
 
     answers = [site, user, commentary]
     answers.insert(2, enc_values[0])
-    answers.insert(-1, enc_values[1])
+    answers.insert(4, enc_values[1])
     db_call(answers)
 
     fs = Efs()
     fs.unmount()
 
     os.remove(f"{pwdfldr}/pwd_con.bin")
-    os.remove(f"{pwdfldr}/answr.bin")
 
 
 if __name__ == "__main__":
