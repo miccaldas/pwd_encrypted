@@ -6,30 +6,28 @@ import pickle
 import sqlite3
 
 import click
-
-# import snoop
+import snoop
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
 from rich.console import Console
 from rich.table import Table
-
-# from snoop import pp
+from snoop import pp
 
 from pwd_encrypted.configs.config import Efs
 
 
-# def type_watch(source, value):
-#     return "type({})".format(source), type(value)
+def type_watch(source, value):
+    return "type({})".format(source), type(value)
 
 
-# snoop.install(watch_extras=[type_watch])
+snoop.install(watch_extras=[type_watch])
 
 load_dotenv()
 pwdfldr = os.getenv("PWD_LOC")
 
 
-# @snoop
+@snoop
 def db_call():
     """
     Collects all entries in db, decrypts the passwords,
@@ -54,7 +52,7 @@ def db_call():
 
     query = "SELECT * FROM pwd"
     try:
-        conn = sqlite3.connect("pwd.db")
+        conn = sqlite3.connect("/home/mic/python/pwd_encrypted/pwd_encrypted/pwd.db")
         cur = conn.cursor()
         cur.execute(
             query,

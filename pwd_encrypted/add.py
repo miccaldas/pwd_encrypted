@@ -11,7 +11,8 @@ import sqlite3
 from string import punctuation
 
 import click
-import snoop
+
+# import snoop
 from Cryptodome.Random.random import randrange
 from dotenv import load_dotenv
 from english_words import get_english_words_set
@@ -20,22 +21,23 @@ from pythemis.scell import SCellSeal, SecureCellError
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.table import Table
-from snoop import pp
+
+# from snoop import pp
 
 from pwd_encrypted.configs.config import Efs
 
 
-def type_watch(source, value):
-    return f"type({source})", type(value)
+# def type_watch(source, value):
+#     return f"type({source})", type(value)
 
 
-snoop.install(watch_extras=[type_watch])
+# snoop.install(watch_extras=[type_watch])
 
 load_dotenv()
 pwdfldr = os.getenv("PWD_LOC")
 
 
-@snoop
+# @snoop
 def check_repeats(site):
     """
     We check with the database to see if there's already an entry with
@@ -56,7 +58,7 @@ def check_repeats(site):
     cur = conn.cursor()
     cur.execute(query)
     records = cur.fetchall()
-    pp(records)
+
     if records != []:
         vals = [(str(a), b, c, d, e) for a, b, c, d, e in records]
         columns = ["ID", "SITE", "USERNAME", "COMMENT", "TIME"]
@@ -78,7 +80,7 @@ def check_repeats(site):
             raise SystemExit
 
 
-@snoop
+# @snoop
 def create_encrypt_pwd(pwdinput):
     """
     Collects all information from 'answr.bin'.
@@ -151,7 +153,7 @@ def create_encrypt_pwd(pwdinput):
         pickle.dump(pwcon, f)
 
 
-@snoop
+# @snoop
 def db_call(answers):
     """
     inserts the new entry in the database.
@@ -180,7 +182,7 @@ def db_call(answers):
 @click.option("-p", "--password")
 @click.option("-l", "--length", type=int)
 @click.option("-c", "--commentary", prompt=True)
-@snoop
+# @snoop
 def call_add(site, user, password, length, commentary):
     """
     Gathers all information through command line.
