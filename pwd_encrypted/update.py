@@ -11,7 +11,8 @@ import click
 from dotenv import load_dotenv
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
-from snoop import pp
+
+# from snoop import pp
 
 from pwd_encrypted.configs.config import Efs
 
