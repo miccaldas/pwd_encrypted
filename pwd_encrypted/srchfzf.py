@@ -5,26 +5,22 @@ import os
 import pickle
 import sqlite3
 
-# import subprocess
+import snoop
 from dotenv import load_dotenv
 from pyfzf.pyfzf import FzfPrompt
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
 from rich import print
+from snoop import pp
 
 from pwd_encrypted.configs.config import Efs, tput_config
 
-# import snoop
+
+def type_watch(source, value):
+    return f"type({source})", type(value)
 
 
-# from snoop import pp
-
-
-# def type_watch(source, value):
-#     return f"type({source})", type(value)
-
-
-# snoop.install(watch_extras=[type_watch])
+snoop.install(watch_extras=[type_watch])
 
 load_dotenv()
 
@@ -106,7 +102,7 @@ def dbpwd():
         pickle.dump(records[0], f)
 
 
-# @snoop
+@snoop
 def decrypt():
     """
     Decrypts the password.
@@ -153,8 +149,8 @@ def decrypt():
         print(e)
     # We convert the password value from bytes to strings.
     pwd_strs = [(a, b, c.decode("latin-1"), d, e) for a, b, c, d, e in pwd_bytes]
-
-    print(f"\n[bold #c2d1ad]    Username/Password for the site {search}: [/][bold #c99c28]\[ {pwd_strs[0][1]} // {pwd_strs[0][2]} ][/]\n")
+    print(pwd_strs)
+    # print(f"\n[bold #c2d1ad]    Username/Password for the site {search}: [/][bold #c99c28]\[ {pwd_strs[0][1]} // {pwd_strs[0][2]} ][/]\n")
 
 
 # @snoop
@@ -168,9 +164,9 @@ def srchfzf():
     dbpwd()
     decrypt()
 
-    cwd = "/home/mic/python/pwd_encrypted/pwd_encrypted"
-    for i in ["chosensite.bin", "records.bin", "sitelist.bin"]:
-        os.remove(f"{cwd}/{i}")
+    # cwd = "/home/mic/python/pwd_encrypted/pwd_encrypted"
+    # for i in ["chosensite.bin", "records.bin", "sitelist.bin"]:
+    #     os.remove(f"{cwd}/{i}")
 
 
 if __name__ == "__main__":
