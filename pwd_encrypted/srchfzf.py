@@ -5,54 +5,28 @@ import os
 import pickle
 import sqlite3
 
-import snoop
+# import snoop
 from dotenv import load_dotenv
 from pyfzf.pyfzf import FzfPrompt
 from pythemis.exception import ThemisError
 from pythemis.scell import SCellSeal, SecureCellError
 from rich import print
-from snoop import pp
+
+# from snoop import pp
 
 from pwd_encrypted.configs.config import Efs, tput_config
+from pwd_encrypted.db import dbdata
 
 
-def type_watch(source, value):
-    return f"type({source})", type(value)
+# def type_watch(source, value):
+#     return f"type({source})", type(value)
 
 
-snoop.install(watch_extras=[type_watch])
+# snoop.install(watch_extras=[type_watch])
 
 load_dotenv()
 
 fzf = FzfPrompt()
-
-
-def dbdata(query, data):
-    """
-    Collects list of posts on the db.
-    We'll use this function as a template,
-    letting the functions that call on it
-    to define its structure. That being
-    the query and if using .fetchall()
-    or .commit()
-    This permits writing just one db function
-    per module.
-    """
-    try:
-        conn = sqlite3.connect("/home/mic/python/pwd_encrypted/pwd_encrypted/pwd.db")
-        cur = conn.cursor()
-        cur.execute(query)
-        if data == "fetch":
-            data = cur.fetchall()
-        if data == "commit":
-            data = conn.commit()
-    except sqlite3.Error as e:
-        print("Error while connecting to db", e)
-    finally:
-        if conn:
-            conn.close()
-
-    return data
 
 
 # @snoop
@@ -95,14 +69,16 @@ def dbpwd():
     with open("chosensite.bin", "rb") as f:
         search = pickle.load(f)
 
-    query = f"SELECT site, username, pwd, comment, time, context FROM pwd_fts WHERE pwd_fts MATCH '{search[0]}'"
-    records = dbdata(query, "fetch")
+    answrs = [f"{search[0]}"]
+    query = "SELECT site, username, pwd, comment, time, context FROM pwd_fts WHERE pwd_fts MATCH ?"
+    print(query)
+    records = dbdata(query, "fetch", answers=answrs)
 
     with open("records.bin", "wb") as f:
         pickle.dump(records[0], f)
 
 
-@snoop
+# @snoop
 def decrypt():
     """
     Decrypts the password.
@@ -149,7 +125,12 @@ def decrypt():
         print(e)
     # We convert the password value from bytes to strings.
     pwd_strs = [(a, b, c.decode("latin-1"), d, e) for a, b, c, d, e in pwd_bytes]
-    print(pwd_strs)
+    print(f"[bold #c2d1ad]  [+] - Your information for the site [bold #EAC696]{search}[/bold #EAC696] is:[/bold #c2d1ad]\n")
+    print(f"[bold #c2d1ad]  Site: [bold #c99c28]{pwd_strs[0][0]}")
+    print(f"[bold #c2d1ad]  Username: [bold #c99c28]{pwd_strs[0][1]}")
+    print(f"[bold #c2d1ad]  Password: [bold #c99c28]{pwd_strs[0][2]}")
+    print(f"[bold #c2d1ad]  Created On: [bold #c99c28]{pwd_strs[0][4]}")
+    print(f"[bold #c2d1ad]  Comment: [bold #c99c28]{pwd_strs[0][3]}")
     # print(f"\n[bold #c2d1ad]    Username/Password for the site {search}: [/][bold #c99c28]\[ {pwd_strs[0][1]} // {pwd_strs[0][2]} ][/]\n")
 
 
